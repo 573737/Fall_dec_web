@@ -67,7 +67,7 @@
           <th>Roll</th>
           <th>Pitch</th>
           <th>Yaw</th>
-          <th>Prediction</th> <!-- New prediction column -->
+          <th>Prediction</th> <!-- Prediction column -->
         </tr>
       </thead>
       <tbody>
@@ -89,13 +89,33 @@
     let model;
     (async () => {
       try {
-        model = await tf.loadGraphModel('./model.json'); // Path to your TensorFlow.js model
+        model = await tf.loadGraphModel('./model.json'); // Load your TensorFlow.js model
       } catch (error) {
         console.error("Error loading model:", error);
       }
     })();
 
     let lastTimestamp = null;
+
+    // Function to normalize input values before prediction
+    function normalizeSensorData(data) {
+      // Normalize pressure, roll, pitch, yaw as per specified ratios
+      const normalizedData = data.map((value, index) => {
+        switch (index) {
+          case 16: // Pressure
+            return value / 899.72;
+          case 17: // Roll
+            return value / 179.9992352;
+          case 18: // Pitch
+            return value / 88.57985317;
+          case 19: // Yaw
+            return value / 179.9971877;
+          default:
+            return value;
+        }
+      });
+      return normalizedData;
+    }
 
     // Function to create a new table row with prediction
     async function addSensorDataWithPrediction() {
@@ -120,64 +140,45 @@
         magnetometer.x,
         magnetometer.y,
         magnetometer.z,
-        orientation.y,
-        orientation.x,
-        orientation.w
+        orientation.y, // Roll
+        orientation.x, // Pitch
+        orientation.w // Yaw
       ];
 
-      if (model) {
-        const inputTensor = tf.tensor2d([exampleData], [1, 19], 'float32'); // Input tensor
-        const prediction = model.predict(inputTensor);
-        const predictionValue = (await prediction.data())[0].toFixed(2); // Get the first prediction
+      // Normalize the sensor data
+      const normalizedData = normalizeSensorData(exampleData);
 
-        newRow.innerHTML = `
-      <td>${currentTime}</td>
-      <td>${velocity.x.toFixed(2)}</td>
-      <td>${velocity.y.toFixed(2)}</td>
-      <td>${velocity.z.toFixed(2)}</td>
-      <td>${orientation.w.toFixed(2)}</td>
-      <td>${orientation.x.toFixed(2)}</td>
-      <td>${orientation.y.toFixed(2)}</td>
-      <td>${orientation.z.toFixed(2)}</td>
-      <td>${acceleration.x.toFixed(2)}</td>
-      <td>${acceleration.y.toFixed(2)}</td>
-      <td>${acceleration.z.toFixed(2)}</td>
-      <td>${gyroscope.x.toFixed(2)}</td>
-      <td>${gyroscope.y.toFixed(2)}</td>
-      <td>${gyroscope.z.toFixed(2)}</td>
-      <td>${magnetometer.x.toFixed(2)}</td>
-      <td>${magnetometer.y.toFixed(2)}</td>
-      <td>${magnetometer.z.toFixed(2)}</td>
-      <td>${orientation.y.toFixed(2)}</td> 
-      <td>${orientation.x.toFixed(2)}</td> 
-      <td>${orientation.w.toFixed(2)}</td> 
-      <td>${predictionValue}</td> 
-    `;
-      } else {
-        newRow.innerHTML = `
-      <td>${currentTime}</td>
-      <td>${velocity.x.toFixed(2)}</td>
-      <td>${velocity.y.toFixed(2)}</td>
-      <td>${velocity.z.toFixed(2)}</td>
-      <td>${orientation.w.toFixed(2)}</td>
-      <td>${orientation.x.toFixed(2)}</td>
-      <td>${orientation.y.toFixed(2)}</td>
-      <td>${orientation.z.toFixed(2)}</td>
-      <td>${acceleration.x.toFixed(2)}</td>
-      <td>${acceleration.y.toFixed(2)}</td>
-      <td>${acceleration.z.toFixed(2)}</td>
-      <td>${gyroscope.x.toFixed(2)}</td>
-      <td>${gyroscope.y.toFixed(2)}</td>
-      <td>${gyroscope.z.toFixed(2)}</td>
-      <td>${magnetometer.x.toFixed(2)}</td>
-      <td>${magnetometer.y.toFixed(2)}</td>
-      <td>${magnetometer.z.toFixed(2)}</td>
-      <td>${orientation.y.toFixed(2)}</td> // Roll
-      <td>${orientation.x.toFixed(2)}</td> // Pitch
-      <td>${orientation.w.toFixed(2)}</td> // Yaw
-      <td>N/A</td> // If model isn't loaded
-    `;
+      let predictionValue = "N/A";
+
+      if (model) {
+        const inputTensor = tf.tensor2d([normalizedData], [1, 19], 'float32'); // Input tensor with normalized data
+        const prediction = model.predict(inputTensor);
+        predictionValue = (await prediction.data())[0].toFixed(2); // Get the prediction
       }
+
+      newRow.innerHTML = `
+    <td>${currentTime}</td>
+    <td>${velocity.x.toFixed(2)}</td>
+    <td>${velocity.y.toFixed(2)}</td>
+    <td>${velocity.z.toFixed(2)}</td>
+    <td>${orientation.w.toFixed(2)}</td>
+    <td>${orientation.x.toFixed(2)}</td>
+    <td>${orientation.y.toFixed(2)}</td>
+    <td>${orientation.z.toFixed(2)}</td>
+    <td>${acceleration.x.toFixed(2)}</td>
+    <td>${acceleration.y.toFixed(2)}</td>
+    <td>${acceleration.z.toFixed(2)}</td>
+    <td>${gyroscope.x.toFixed(2)}</td>
+    <td>${gyroscope.y.toFixed(2)}</td>
+    <td>${gyroscope.z.toFixed(2)}</td>
+    <td>${magnetometer.x.toFixed(2)}</td>
+    <td>${magnetometer.y.toFixed(2)}</td>
+    <td>${magnetometer.z.toFixed(2)}</td>
+    <td>${orientation.y.toFixed(2)}</td> // Roll
+    <td>${orientation.x.toFixed(2)}</td> // Pitch
+    <td>${orientation.w.toFixed(2)}</td> // Yaw
+    <td>${predictionValue}</td> <!-- Prediction -->
+  `;
 
       sensorTableBody.appendChild(newRow);
     }
@@ -188,7 +189,7 @@
 
       if (acceleration) {
         if (lastTimestamp !== null) {
-          const dt = (timeStamp - lastTimestamp) / 1000; // Convert to seconds
+          const dt = (timeStamp - lastTimestamp) / 1000;
 
           // Integrate acceleration to get velocity
           velocity.x += (acceleration.x ?? 0) * dt;
