@@ -77,11 +77,11 @@
   </div>
 
   <script>
-    // Define sensor data objects
+    // Define sensor data objects with initial values
     const velocity = { x: 0, y: 0, z: 0 };
-    const orientation = { w: 0, x, y, z: 0 };
+    const orientation = { w: 0, x: 0, y: 0, z: 0 };
     const acceleration = { x: 0, y: 0, z: 0 };
-    const gyroscope = { x: 0, y, z: 0 };
+    const gyroscope = { x: 0, y: 0, z: 0 };
     const magnetometer = { x: 0, y: 0, z: 0 };
 
     const sensorTableBody = document.getElementById("sensorTable").querySelector("tbody");
@@ -89,7 +89,7 @@
     let model;
     (async () => {
       try {
-        model = await tf.loadGraphModel('./model.json'); // Load your TensorFlow.js model
+        model = await tf.loadGraphModel('./model.json'); // Path to your TensorFlow.js model
       } catch (error) {
         console.error("Error loading model:", error);
       }
@@ -97,23 +97,27 @@
 
     let lastTimestamp = null;
 
-    // Function to normalize sensor data between 0 and 1
+    // Function to normalize sensor data
+    function normalize(value, min, max) {
+      return (value - min) / (max - min);
+    }
+
+    // Normalize sensor data for specific components
     function normalizeSensorData(data) {
-      const minValues = [ /* Add the expected minimum values for each sensor data */];
-      const maxValues = [ /* Add the expected maximum values for each sensor data */];
-
-      const normalizedData = data.map((value, index) => {
-        const min = minValues[index];
-        const max = maxValues[index];
-
-        if (max - min === 0) {
-          return 0; // Avoid division by zero
+      return data.map((value, index) => {
+        switch (index) {
+          case 16: // Pressure normalization
+            return value / 899.72;
+          case 17: // Roll normalization
+            return value / 179.9992352;
+          case 18: // Pitch normalization
+            return value / 88.57985317;
+          case 19: // Yaw normalization
+            return value / 179.9971877;
+          default:
+            return normalize(value, -1, 1); // Example normalization to a range
         }
-
-        return (value - min) / (max - min); // Normalize to be between 0 and 1
       });
-
-      return normalizedData;
     }
 
     // Function to create a new table row with prediction
@@ -144,15 +148,14 @@
         orientation.w // Yaw
       ];
 
-      // Normalize the sensor data to be between 0 and 1
       const normalizedData = normalizeSensorData(exampleData);
 
       let predictionValue = "N/A";
 
       if (model) {
-        const inputTensor = tf.tensor2d([normalizedData], [1, 19], 'float32'); // Tensor with normalized data
-        const prediction = model.predict(inputTensor); // Get prediction from TensorFlow.js model
-        predictionValue = (await prediction.data())[0].toFixed(2); // Extract prediction value
+        const inputTensor = tf.tensor2d([normalizedData], [1, 19], 'float32'); // Create a 2D tensor with normalized data
+        const prediction = model.predict(inputTensor);
+        predictionValue = (await prediction.data())[0].toFixed(2); // Get the prediction
       }
 
       newRow.innerHTML = `
@@ -182,13 +185,13 @@
       sensorTableBody.appendChild(newRow);
     }
 
-    // Listen for device motion events
+    // Device motion event listener (for accelerometer and gyroscope)
     window.addEventListener("devicemotion", (event) => {
       const { acceleration, rotationRate, timeStamp } = event;
 
       if (acceleration) {
         if (lastTimestamp !== null) {
-          const dt = (timeStamp - lastTimestamp) / 1000;
+          const dt = (timeStamp - lastTimestamp) / 1000; // Convert to seconds
 
           velocity.x += (acceleration.x ?? 0) * dt;
           velocity.y += (acceleration.y ?? 0) * dt;
@@ -204,12 +207,12 @@
 
       if (rotationRate) {
         gyroscope.x = rotationRate.alpha ?? 0;
-        gyroscope.y = rotationRate.beta ?? 0;
+        gyroscope.y to 90; gyroscope.y = rotationRate.beta ?? 0;
         gyroscope.z = rotationRate.gamma ?? 0;
       }
     });
 
-    // Listen for device orientation events
+    // Device orientation event listener
     window.addEventListener("deviceorientation", (event) => {
       const { alpha, beta, gamma } = event;
 
@@ -219,7 +222,7 @@
       orientation.z = alpha ?? 0;
     });
 
-    // Update sensor data table every 3 seconds
+    // Update the sensor data table every 3 seconds
     setInterval(() => {
       addSensorDataWithPrediction();
     }, 3000); // 3-second interval
