@@ -1,233 +1,190 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-  <meta charset="UTF-8">
-  <title>Real-Time Sensor Data with Predictions</title>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script> <!-- TensorFlow.js -->
-  <style>
-    body {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      background-color: #f0f0f0;
-      font-family: Arial, sans-serif;
-    }
-
-    #sensorOutput {
-      text-align: center;
-      border: 1px solid #ccc;
-      padding: 20px;
-      background-color: white;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    }
-
-    #sensorTable {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    #sensorTable th,
-    #sensorTable td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: center;
-    }
-
-    #sensorTable th {
-      background-color: #f2f2f2;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Real-Time Sensor Data with Predictions</title>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script> <!-- TensorFlow.js -->
+<style>
+body {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #f0f0f0;
+  font-family: Arial, sans-serif;
+}
+#sensorOutput {
+  text-align: center;
+  border: 1px solid #ccc;
+  padding: 20px;
+  background-color: white;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+#sensorTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+#sensorTable th, #sensorTable td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: center;
+}
+#sensorTable th {
+  background-color: #f2f2f2;
+}
+</style>
 </head>
-
 <body>
-  <div id="sensorOutput">
-    <h2>Sensor Data Table with Predictions</h2>
-    <table id="sensorTable">
-      <thead>
-        <tr>
-          <th>Time</th>
-          <th>VelInc_X</th>
-          <th>VelInc_Y</th>
-          <th>VelInc_Z</th>
-          <th>OriInc_w</th>
-          <th>OriInc_x</th>
-          <th>OriInc_y</th>
-          <th>OriInc_z</th>
-          <th>Acc_X</th>
-          <th>Acc_Y</th>
-          <th>Acc_Z</th>
-          <th>Gyr_X</th>
-          <th>Gyr_Y</th>
-          <th>Gyr_Z</th>
-          <th>Mag_X</th>
-          <th>Mag_Y</th>
-          <th>Mag_Z</th>
-          <th>Roll</th>
-          <th>Pitch</th>
-          <th>Yaw</th>
-          <th>Prediction</th> <!-- Prediction column -->
-        </tr>
-      </thead>
-      <tbody>
-        <!-- Rows will be added here -->
-      </tbody>
-    </table>
-  </div>
+<div id="sensorOutput">
+  <h2>Sensor Data Table with Predictions</h2>
+  <table id="sensorTable">
+    <thead>
+      <tr>
+        <th>Time</th>
+        <th>VelInc_X</th>
+        <th>VelInc_Y</th>
+        <th>VelInc_Z</th>
+        <th>OriInc_w</th>
+        <th>OriInc_x</th>
+        <th>OriInc_y</th>
+        <th>OriInc_z</th>
+        <th>Acc_X</th>
+        <th>Acc_Y</th>
+        <th>Acc_Z</th>
+        <th>Gyr_X</th>
+        <th>Gyr_Y</th>
+        <th>Gyr_Z</th>
+        <th>Mag_X</th>
+        <th>Mag_Y</th>
+        <th>Mag_Z</th>
+        <th>Roll</th>
+        <th>Pitch</th>
+        <th>Yaw</th>
+        <th>Prediction</th> <!-- New prediction column -->
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Rows will be added here -->
+    </tbody>
+  </table>
+</div>
 
-  <script>
-    // Define sensor data objects with initial values
-    const velocity = { x: 0, y: 0, z: 0 };
-    const orientation = { w: 0, x: 0, y: 0, z: 0 };
-    const acceleration = { x: 0, y: 0, z: 0 };
-    const gyroscope = { x: 0, y: 0, z: 0 };
-    const magnetometer = { x: 0, y: 0, z: 0 };
+<script>
+// Define sensor data objects
+const velocity = { x: 0, y: 0, z: 0 };
+const orientation = { w: 0, x: 0, y: 0, z: 0 };
+const acceleration = { x: 0, y: 0, z: 0 };
+const gyroscope = { x: 0, y: 0, z: 0 };
+const magnetometer = { x: 0, y: 0, z: 0 };
 
-    const sensorTableBody = document.getElementById("sensorTable").querySelector("tbody");
+const sensorTableBody = document.getElementById("sensorTable").querySelector("tbody");
 
-    let model;
-    (async () => {
-      try {
-        model = await tf.loadGraphModel('./model.json'); // Path to your TensorFlow.js model
-      } catch (error) {
-        console.error("Error loading model:", error);
-      }
-    })();
+let model;
+(async () => {
+  try {
+    model = await tf.loadGraphModel('./model.json'); // Load from TensorFlow.js model path
+  } catch (error) {
+    console.error("Error loading model:", error);
+  }
+})();
 
-    let lastTimestamp = null;
+let lastTimestamp = null;
 
-    // Function to normalize sensor data
-    function normalize(value, min, max) {
-      return (value - min) / (max - min);
-    }
+// Function to normalize sensor data between -1 and 1
+function normalize(value, min, max) {
+  return 2 * ((value - min) / (max - min)) - 1;
+}
 
-    // Normalize sensor data for specific components
-    function normalizeSensorData(data) {
-      return data.map((value, index) => {
-        switch (index) {
-          case 16: // Pressure normalization
-            return value / 899.72;
-          case 17: // Roll normalization
-            return value / 179.9992352;
-          case 18: // Pitch normalization
-            return value / 88.57985317;
-          case 19: // Yaw normalization
-            return value / 179.9971877;
-          default:
-            return normalize(value, -1, 1); // Example normalization to a range
-        }
-      });
-    }
+// Function to add a new table row with prediction
+async function addSensorDataWithPrediction() {
+  const newRow = document.createElement("tr");
 
-    // Function to create a new table row with prediction
-    async function addSensorDataWithPrediction() {
-      const newRow = document.createElement("tr");
+  const currentTime = new Date().toLocaleTimeString();
 
-      const currentTime = new Date().toLocaleTimeString();
+  const normalizedData = [
+    normalize(velocity.x, -10, 10), // Adjust min/max according to expected range
+    normalize(velocity.y, -10, 10),
+    normalize(velocity.z, -10, 10),
+    normalize(orientation.w, 0, 360),
+    normalize(orientation.x, -180, 180),
+    normalize(orientation.y, -90, 90),
+    normalize(orientation.z, -180, 180),
+    normalize(acceleration.x, -10, 10),
+    normalize(acceleration.y, -10, 10),
+    normalize(acceleration.z, -10, 10),
+    normalize(gyroscope.x, -500, 500),
+    normalize(gyroscope.y, -500, 500),
+    normalize(gyroscope.z, -500, 500),
+    normalize(magnetometer.x, -100, 100),
+    normalize(magnetometer.y, -100, 100),
+    normalize(magnetometer.z, -100, 100),
+    normalize(orientation.y, -90, 90), // Roll
+    normalize(orientation.x, -90, 90), // Pitch
+    normalize(orientation.w, 0, 360) // Yaw
+  ];
 
-      const exampleData = [
-        velocity.x,
-        velocity.y,
-        velocity.z,
-        orientation.w,
-        orientation.x,
-        orientation.y,
-        orientation.z,
-        acceleration.x,
-        acceleration.y,
-        acceleration.z,
-        gyroscope.x,
-        gyroscope.y,
-        gyroscope.z,
-        magnetometer.x,
-        magnetometer.y,
-        magnetometer.z,
-        orientation.y, // Roll
-        orientation.x, // Pitch
-        orientation.w // Yaw
-      ];
+  if (model) {
+    const inputTensor = tf.tensor2d([normalizedData], [1, 19], 'float32'); // Normalized input tensor
+    const prediction = model.predict(inputTensor);
+    const predictionValue = (await prediction.data())[0].toFixed(2); // Prediction output
 
-      const normalizedData = normalizeSensorData(exampleData);
+    newRow.innerHTML = `
+      <td>${currentTime}</td>
+      <td>${velocity.x.toFixed(2)}</td>
+      <td>${velocity.y.toFixed(2)}</td>
+      <td>${velocity.z.toFixed(2)}</td>
+      <td>${orientation.w.toFixed(2)}</td>
+      <td>${orientation.x.toFixed(2)}</td>
+      <td>${orientation.y.toFixed(2)}</td>
+      <td>${orientation.z.toFixed(2)}</td>
+      <td>${acceleration.x.toFixed(2)}</td>
+      <td>${acceleration.y.toFixed(2)}</td>
+      <td>${acceleration.z.toFixed(2)}</td>
+      <td>${gyroscope.x.toFixed(2)}</td>
+      <td>${gyroscope.y.toFixed(2)}</td>
+      <td>${gyroscope.z.toFixed(2)}</td>
+      <td>${magnetometer.x.toFixed(2)}</td>
+      <td>${magnetometer.y.toFixed(2)}</td>
+      <td>${magnetometer.z.toFixed(2)}</td>
+      <td>${orientation.y.toFixed(2)}</td> // Roll
+      <td>${orientation.x.toFixed(2)}</td> // Pitch
+      <td>${orientation.w.toFixed(2)}</td> // Yaw
+      <td>${predictionValue}</td> // Prediction
+    `;
+  } else {
+    newRow.innerHTML = `
+      <td>${currentTime}</td>
+      <td>${velocity.x.toFixed(2)}</td>
+      <td>${velocity.y.toFixed(2)}</td>
+      <td>${velocity.z.toFixed(2)}</td>
+      <td>${orientation.w.toFixed(2)}</td>
+      <td>${orientation.x.toFixed(2)}</td>
+      <td>${orientation.y.toFixed(2)}</td>
+      <td>${orientation.z.toFixed(2)}</td>
+      <td>${acceleration.x.toFixed(2)}</td>
+      <td>${acceleration.y.toFixed(2)}</td>
+      <td>${acceleration.z.toFixed(2)}</td>
+      <td>${gyroscope.x.toFixed(2)}</td>
+      <td>${gyroscope.y.toFixed(2)}</td>
+      <td>${gyroscope.z.toFixed(2)}</td>
+      <td>${magnetometer.x.toFixed(2)}</td>
+      <td>${magnetometer.y.toFixed(2)}</td>
+      <td>${magnetometer.z.toFixed(2)}</td>
+      <td>${orientation.y.toFixed(2)}</td> // Roll
+      <td>${orientation.x.toFixed(2)}</td> // Pitch
+      <td>${orientation.w.toFixed(2)}</td> // Yaw
+      <td>N/A</td> // No prediction
+    `;
+  }
 
-      let predictionValue = "N/A";
+  sensorTableBody.appendChild(newRow);
+}
 
-      if (model) {
-        const inputTensor = tf.tensor2d([normalizedData], [1, 19], 'float32'); // Create a 2D tensor with normalized data
-        const prediction = model.predict(inputTensor);
-        predictionValue = (await prediction.data())[0].toFixed(2); // Get the prediction
-      }
-
-      newRow.innerHTML = `
-    <td>${currentTime}</td>
-    <td>${velocity.x.toFixed(2)}</td>
-    <td>${velocity.y.toFixed(2)}</td>
-    <td>${velocity.z.toFixed(2)}</td>
-    <td>${orientation.w.toFixed(2)}</td>
-    <td>${orientation.x.toFixed(2)}</td>
-    <td>${orientation.y.toFixed(2)}</td>
-    <td>${orientation.z.toFixed(2)}</td>
-    <td>${acceleration.x.toFixed(2)}</td>
-    <td>${acceleration.y.toFixed(2)}</td>
-    <td>${acceleration.z.toFixed(2)}</td>
-    <td>${gyroscope.x.toFixed(2)}</td>
-    <td>${gyroscope.y.toFixed(2)}</td>
-    <td>${gyroscope.z.toFixed(2)}</td>
-    <td>${magnetometer.x.toFixed(2)}</td>
-    <td>${magnetometer.y.toFixed(2)}</td>
-    <td>${magnetometer.z.toFixed(2)}</td>
-    <td>${orientation.y.toFixed(2)}</td> // Roll
-    <td>${orientation.x.toFixed(2)}</td> // Pitch
-    <td>${orientation.w.toFixed(2)}</td> // Yaw
-    <td>${predictionValue}</td> <!-- Prediction -->
-  `;
-
-      sensorTableBody.appendChild(newRow);
-    }
-
-    // Device motion event listener (for accelerometer and gyroscope)
-    window.addEventListener("devicemotion", (event) => {
-      const { acceleration, rotationRate, timeStamp } = event;
-
-      if (acceleration) {
-        if (lastTimestamp !== null) {
-          const dt = (timeStamp - lastTimestamp) / 1000; // Convert to seconds
-
-          velocity.x += (acceleration.x ?? 0) * dt;
-          velocity.y += (acceleration.y ?? 0) * dt;
-          velocity.z += (acceleration.z ?? 0) * dt;
-        }
-
-        lastTimestamp = timeStamp;
-
-        acceleration.x = acceleration.x ?? 0;
-        acceleration.y = acceleration.y ?? 0;
-        acceleration.z = acceleration.z ?? 0;
-      }
-
-      if (rotationRate) {
-        gyroscope.x = rotationRate.alpha ?? 0;
-        gyroscope.y to 90; gyroscope.y = rotationRate.beta ?? 0;
-        gyroscope.z = rotationRate.gamma ?? 0;
-      }
-    });
-
-    // Device orientation event listener
-    window.addEventListener("deviceorientation", (event) => {
-      const { alpha, beta, gamma } = event;
-
-      orientation.w = alpha ?? 0;
-      orientation.x = beta ?? 0;
-      orientation.y = gamma ?? 0;
-      orientation.z = alpha ?? 0;
-    });
-
-    // Update the sensor data table every 3 seconds
-    setInterval(() => {
-      addSensorDataWithPrediction();
-    }, 3000); // 3-second interval
-  </script>
+// Update the sensor data table every 3 seconds
+setInterval(() => {
+  addSensorDataWithPrediction();
+}, 3000); // 3-second interval
+</script>
 
 </body>
-
 </html>
