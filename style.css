@@ -1,0 +1,81 @@
+/* General Styles */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', sans-serif;
+    background: linear-gradient(to bottom, #e0f7fa, #ffffff);
+}
+
+/* Animation for falling stickers */
+@keyframes fall {
+    0% {
+        transform: translateY(-10%);
+    }
+
+    100% {
+        transform: translateY(100%);
+    }
+}
+
+/* Sticker Animation for falling objects */
+.sticker {
+    position: absolute;
+    top: -10%;
+    animation: fall 10s infinite linear;
+}
+
+.sticker:nth-child(1) {
+    left: 10%;
+    animation-delay: 1s;
+}
+
+.sticker:nth-child(2) {
+    left: 30%;
+    animation-delay: 2s;
+}
+
+.sticker:nth-child(3) {
+    left: 50%;
+    animation-delay: 3s;
+}
+
+.sticker:nth-child(4) {
+    left: 70%;
+    animation-delay: 4s;
+}
+
+.sticker:nth-child(5) {
+    left: 90%;
+    animation-delay: 5s;
+}
+
+/* Sensor Data Table */
+.sensor-output {
+    text-align: center;
+    border: 1px solid #ccc;
+    padding: 20px;
+    background-color: white;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.sensor-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.sensor-table th,
+.sensor-table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: center;
+}
+
+.sensor-table th {
+    background-color: #f2f2f2;
+}
+
+/* Heading */
+h2 {
+    color: #0097a7;
+    font-size: 1.5em;
+}

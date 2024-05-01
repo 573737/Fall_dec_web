@@ -42,9 +42,9 @@
 </head>
 
 <body>
-  <div id="sensorOutput">
-    <h2>Sensor Data Table with Predictions</h2>
-    <table id="sensorTable">
+  <div class="sensor-output">
+    <h2>Fall Detection Sensor Data with Predictions</h2>
+    <table class="sensor-table">
       <thead>
         <tr>
           <th>Time</th>
@@ -67,14 +67,21 @@
           <th>Roll</th>
           <th>Pitch</th>
           <th>Yaw</th>
-          <th>Prediction</th> <!-- For predicted results -->
+          <th>Prediction</th> <!-- Prediction column -->
         </tr>
       </thead>
       <tbody>
-        <!-- Rows will be dynamically added here -->
+        <!-- Sensor data rows will be added here -->
       </tbody>
     </table>
   </div>
+
+  <!-- Stickers with falling animation -->
+  <div class="sticker" style="background: url('falling1.png') no-repeat center; height: 100px; width: 100px;"></div>
+  <div class="sticker" style="background: url('falling2.png') no-repeat center; height: 100px; width: 100px;"></div>
+  <div class="sticker" style="background: url('falling3.png') no-repeat center; height: 100px; width: 100px;"></div>
+  <div class="sticker" style="background: url('falling4.png') no-repeat center; height: 100px; width: 100px;"></div>
+  <div class="sticker" style="background: url('falling5.png') no-repeat center; height: 100px; width: 100px;"></div>
 
   <script>
     let model = null;
