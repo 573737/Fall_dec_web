@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Real-Time Sensor Data with Predictions</title>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script> <!-- TensorFlow.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <style>
     body {
       display: flex;
@@ -51,10 +51,10 @@
           <th>VelInc_X</th>
           <th>VelInc_Y</th>
           <th>VelInc_Z</th>
-          <th>OriInc_w</th>
-          <th>OriInc_x</th>
-          <th>OriInc_y</th>
-          <th>OriInc_z</th>
+          <th>OriInc_W</th>
+          <th>OriInc_X</th>
+          <th>OriInc_Y</th>
+          <th>OriInc_Z</th>
           <th>Acc_X</th>
           <th>Acc_Y</th>
           <th>Acc_Z</th>
@@ -67,29 +67,29 @@
           <th>Roll</th>
           <th>Pitch</th>
           <th>Yaw</th>
-          <th>Prediction</th> <!-- New prediction column -->
+          <th>Prediction</th>
         </tr>
       </thead>
       <tbody>
-        <!-- Rows will be added here -->
+        <!-- Sensor data rows will be added here -->
       </tbody>
     </table>
   </div>
 
   <script>
-    // Load TensorFlow.js model
-    let model;
+    let model = null;
+
+    // Load TensorFlow.js model once and cache it
     (async () => {
       try {
-        model = await tf.loadGraphModel('./model.json'); // Path to your TensorFlow.js model
+        model = await tf.loadGraphModel('./model.json');
       } catch (error) {
-        console.error("Error loading model:", error);
+        console.error("Error loading TensorFlow model:", error);
       }
     })();
 
     const sensorTableBody = document.getElementById("sensorTable").querySelector("tbody");
 
-    // Define sensor data and previous timestamp
     let velocity = { x: 0, y: 0, z: 0 };
     let orientation = { w: 0, x: 0, y: 0, z: 0 };
     let acceleration = { x: 0, y: 0, z: 0 };
@@ -98,56 +98,40 @@
 
     let lastTimestamp = null;
 
-    // Normalize sensor data
-    function normalize(value, min, max) {
-      return (value - min) / (max - min);
-    }
+    const normalize = (value, min, max) => (value - min) / (max - min);
 
-    // Function to add a row with prediction
-    async function addSensorDataWithPrediction() {
-      const newRow = document.createElement("tr");
-
+    const addSensorDataWithPrediction = async () => {
       const currentTime = new Date().toLocaleTimeString();
 
-      // Define normalization ranges for each sensor
-      const expectedRanges = {
-        velocity: { min: -10, max: 10 },
-        orientation: { min: 0, max: 360 },
-        acceleration: { min: -10, max: 10 },
-        gyroscope: { min: -250, max: 250 },
-        magnetometer: { min: -100, max: 100 }
-      };
-
-      // Normalize sensor data using the defined ranges
       const normalizedVelocity = {
-        x: normalize(velocity.x, expectedRanges.velocity.min, expectedRanges.velocity.max),
-        y: normalize(velocity.y, expectedRanges.velocity.min, expectedRanges.velocity.max),
-        z: normalize(velocity.z, expectedRanges.velocity.min, expectedRanges.velocity.max)
+        x: normalize(velocity.x, -10, 10),
+        y: normalize(velocity.y, -10, 10),
+        z: normalize(velocity.z, -10, 10),
       };
 
       const normalizedOrientation = {
-        w: normalize(orientation.w, expectedRanges.orientation.min, expectedRanges.orientation.max),
-        x: normalize(orientation.x, expectedRanges.orientation.min, expectedRanges.orientation.max),
-        y: normalize(orientation.y, expectedRanges.orientation.min, expectedRanges.orientation.max),
-        z: normalize(orientation.z, expectedRanges.orientation.min, expectedRanges.orientation.max)
+        w: normalize(orientation.w, 0, 360),
+        x: normalize(orientation.x, 0, 360),
+        y: normalize(orientation.y, 0, 360),
+        z: normalize(orientation.z, 0, 360),
       };
 
       const normalizedAcceleration = {
-        x: normalize(acceleration.x, expectedRanges.acceleration.min, expectedRanges.acceleration.max),
-        y: normalize(acceleration.y, expectedRanges.acceleration.min, expectedRanges.acceleration.max),
-        z: normalize(acceleration.z, expectedRanges.acceleration.min, expectedRanges.acceleration.max)
+        x: normalize(acceleration.x, -10, 10),
+        y: normalize(acceleration.y, -10, 10),
+        z: normalize(acceleration.z, -10, 10),
       };
 
       const normalizedGyroscope = {
-        x: normalize(gyroscope.x, expectedRanges.gyroscope.min, expectedRanges.gyroscope.max),
-        y: normalize(gyroscope.y, expectedRanges.gyroscope.min, expectedRanges.gyroscope.max),
-        z: normalize(gyroscope.z, expectedRanges.gyroscope.min, expectedRanges.gyroscope.max)
+        x: normalize(gyroscope.x, -250, 250),
+        y: normalize(gyroscope.y, -250, 250),
+        z: normalize(gyroscope.z, -250, 250),
       };
 
       const normalizedMagnetometer = {
-        x: normalize(magnetometer.x, expectedRanges.magnetometer.min, expectedRanges.magnetometer.max),
-        y: normalize(magnetometer.y, expectedRanges.magnetometer.min, expectedRanges.magnetometer.max),
-        z: normalize(magnetometer.z, expectedRanges.magnetometer.min, expectedRanges.magnetometer.max)
+        x: normalize(magnetometer.x, -100, 100),
+        y: normalize(magnetometer.y, -100, 100),
+        z: normalize(magnetometer.z, -100, 100),
       };
 
       const exampleData = [
@@ -174,11 +158,16 @@
 
       let predictionValue = "N/A";
       if (model) {
-        const inputTensor = tf.tensor2d([exampleData], [1, 19], 'float32'); // Create input tensor
+        const inputTensor = tf.tensor2d([exampleData], [1, 19], 'float32');
         const prediction = model.predict(inputTensor);
         predictionValue = (await prediction.data())[0].toFixed(2);
+
+        // Release tensor to prevent memory leaks
+        inputTensor.dispose();
+        prediction.dispose();
       }
 
+      const newRow = document.createElement("tr");
       newRow.innerHTML = `
     <td>${currentTime}</td>
     <td>${normalizedVelocity.x.toFixed(2)}</td>
@@ -204,10 +193,20 @@
   `;
 
       sensorTableBody.appendChild(newRow);
+    };
+
+    // Debounce function to minimize excessive event handling
+    function debounce(fn, delay) {
+      let timer;
+      return function (...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          fn.apply(this, args);
+        }, delay);
+      };
     }
 
-    // Listen for device motion events
-    window.addEventListener("devicemotion", (event) => {
+    window.addEventListener("devicemotion", debounce((event) => {
       const { acceleration, rotationRate, timeStamp } = event;
 
       if (acceleration) {
@@ -231,22 +230,21 @@
         gyroscope.y = rotationRate.beta ?? 0;
         gyroscope.z = rotationRate.gamma ?? 0;
       }
-    });
+    }, 100)); // Debounce events with a 100ms delay
 
-    // Listen for device orientation events
-    window.addEventListener("deviceorientation", (event) => {
+    window.addEventListener("deviceorientation", debounce((event) => {
       const { alpha, beta, gamma } = event;
 
       orientation.w = alpha ?? 0;
       orientation.x = beta ?? 0;
       orientation.y = gamma ?? 0;
       orientation.z = alpha ?? 0;
-    });
+    }, 100)); // Debounce events with a 100ms delay
 
-    // Update the sensor data table with predictions every 3 seconds
+    // Update sensor data table every 3 seconds
     setInterval(() => {
       addSensorDataWithPrediction();
-    }, 3000); // 3-second interval
+    }, 3000);
   </script>
 
 </body>
