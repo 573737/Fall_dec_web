@@ -3,8 +3,8 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Real-Time Sensor Data with Predictions</title>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <title>Smartwatch Sensor Data with Predictions</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script> <!-- TensorFlow.js -->
   <style>
     body {
       display: flex;
@@ -67,11 +67,11 @@
           <th>Roll</th>
           <th>Pitch</th>
           <th>Yaw</th>
-          <th>Prediction</th>
+          <th>Prediction</th> <!-- For predicted results -->
         </tr>
       </thead>
       <tbody>
-        <!-- Sensor data rows will be added here -->
+        <!-- Rows will be dynamically added here -->
       </tbody>
     </table>
   </div>
@@ -84,7 +84,7 @@
       try {
         model = await tf.loadGraphModel('./model.json');
       } catch (error) {
-        console.error("Error loading TensorFlow model:", error);
+        console.error("Error loading TensorFlow.js model:", error);
       }
     })();
 
@@ -98,6 +98,7 @@
 
     let lastTimestamp = null;
 
+    // Normalization function
     const normalize = (value, min, max) => (value - min) / (max - min);
 
     const addSensorDataWithPrediction = async () => {
@@ -153,12 +154,12 @@
         normalizedMagnetometer.z,
         normalizedOrientation.y, // Roll
         normalizedOrientation.x, // Pitch
-        normalizedOrientation.w // Yaw
+        normalizedOrientation.w, // Yaw
       ];
 
       let predictionValue = "N/A";
       if (model) {
-        const inputTensor = tf.tensor2d([exampleData], [1, 19], 'float32');
+        const inputTensor = tf.tensor2d([exampleData], [1, 19], 'float32'); // 19 features
         const prediction = model.predict(inputTensor);
         predictionValue = (await prediction.data())[0].toFixed(2);
 
@@ -169,33 +170,33 @@
 
       const newRow = document.createElement("tr");
       newRow.innerHTML = `
-    <td>${currentTime}</td>
-    <td>${normalizedVelocity.x.toFixed(2)}</td>
-    <td>${normalizedVelocity.y.toFixed(2)}</td>
-    <td>${normalizedVelocity.z.toFixed(2)}</td>
-    <td>${normalizedOrientation.w.toFixed(2)}</td>
-    <td>${normalizedOrientation.x.toFixed(2)}</td>
-    <td>${normalizedOrientation.y.toFixed(2)}</td>
-    <td>${normalizedOrientation.z.toFixed(2)}</td>
-    <td>${normalizedAcceleration.x.toFixed(2)}</td>
-    <td>${normalizedAcceleration.y.toFixed(2)}</td>
-    <td>${normalizedAcceleration.z.toFixed(2)}</td>
-    <td>${normalizedGyroscope.x.toFixed(2)}</td>
-    <td>${normalizedGyroscope.y.toFixed(2)}</td>
-    <td>${normalizedGyroscope.z.toFixed(2)}</td>
-    <td>${normalizedMagnetometer.x.toFixed(2)}</td>
-    <td>${normalizedMagnetometer.y.toFixed(2)}</td>
-    <td>${normalizedMagnetometer.z.toFixed(2)}</td>
-    <td>${normalizedOrientation.y.toFixed(2)}</td> 
-    <td>${normalizedOrientation.x.toFixed(2)}</td> 
-    <td>${normalizedOrientation.w.toFixed(2)}</td> 
-    <td>${predictionValue}</td>
-  `;
+        <td>${currentTime}</td>
+        <td>${normalizedVelocity.x.toFixed(2)}</td>
+        <td>${normalizedVelocity.y.toFixed(2)}</td>
+        <td>${normalizedVelocity.z.toFixed(2)}</td>
+        <td>${normalizedOrientation.w.toFixed(2)}</td>
+        <td>${normalizedOrientation.x.toFixed(2)}</td>
+        <td>${normalizedOrientation.y.toFixed(2)}</td>
+        <td>${normalizedOrientation.z.toFixed(2)}</td>
+        <td>${normalizedAcceleration.x.toFixed(2)}</td>
+        <td>${normalizedAcceleration.y.toFixed(2)}</td>
+        <td>${normalizedAcceleration.z.toFixed(2)}</td>
+        <td>${normalizedGyroscope.x.toFixed(2)}</td>
+        <td>${normalizedGyroscope.y.toFixed(2)}</td>
+        <td>${normalizedGyroscope.z.toFixed(2)}</td>
+        <td>${normalizedMagnetometer.x.toFixed(2)}</td>
+        <td>${normalizedMagnetometer.y.toFixed(2)}</td>
+        <td>${normalizedMagnetometer.z.toFixed(2)}</td>
+        <td>${normalizedOrientation.y.toFixed(2)}</td> 
+        <td>${normalizedOrientation.x.toFixed(2)}</td> 
+        <td>${normalizedOrientation.w.toFixed(2)}</td> 
+        <td>${predictionValue}</td>
+      `;
 
       sensorTableBody.appendChild(newRow);
     };
 
-    // Debounce function to minimize excessive event handling
+    // Debounce function to prevent excessive event handling
     function debounce(fn, delay) {
       let timer;
       return function (...args) {
@@ -206,23 +207,24 @@
       };
     }
 
+    // Capture device motion data
     window.addEventListener("devicemotion", debounce((event) => {
-      const { acceleration, rotationRate, timeStamp } = event;
+      const { acceleration, accelerationIncludingGravity, rotationRate, timeStamp } = event;
 
-      if (acceleration) {
-        if (lastTimestamp !== null) {
+      if (accelerationIncludingGravity) {
+        if (lastTimestamp) {
           const dt = (timeStamp - lastTimestamp) / 1000;
 
-          velocity.x += (acceleration.x ?? 0) * dt;
-          velocity.y += (acceleration.y ?? 0) * dt;
-          velocity.z += (acceleration.z ?? 0) * dt;
+          velocity.x += (accelerationIncludingGravity.x ?? 0) * dt;
+          velocity.y += (accelerationIncludingGravity.y ?? 0) * dt;
+          velocity.z += (accelerationIncludingGravity.z ?? 0) * dt;
         }
 
         lastTimestamp = timeStamp;
 
-        acceleration.x = acceleration.x ?? 0;
-        acceleration.y = acceleration.y ?? 0;
-        acceleration.z = acceleration.z ?? 0;
+        acceleration.x = accelerationIncludingGravity.x ?? 0;
+        acceleration.y = accelerationIncludingGravity.y ?? 0;
+        acceleration.z = accelerationIncludingGravity.z ?? 0;
       }
 
       if (rotationRate) {
@@ -230,21 +232,20 @@
         gyroscope.y = rotationRate.beta ?? 0;
         gyroscope.z = rotationRate.gamma ?? 0;
       }
-    }, 100)); // Debounce events with a 100ms delay
+    }, 100)); // Debounce to reduce noise and improve accuracy
 
+    // Capture device orientation data
     window.addEventListener("deviceorientation", debounce((event) => {
-      const { alpha, beta, gamma } = event;
+      orientation.w = event.alpha ?? 0;
+      orientation.x = event.beta ?? 0;
+      orientation.y = event.gamma ?? 0;
+      orientation.z = event.alpha ?? 0;
+    }, 100)); // 100ms debounce for orientation data
 
-      orientation.w = alpha ?? 0;
-      orientation.x = beta ?? 0;
-      orientation.y = gamma ?? 0;
-      orientation.z = alpha ?? 0;
-    }, 100)); // Debounce events with a 100ms delay
-
-    // Update sensor data table every 3 seconds
+    // Add new data with prediction every 3 seconds
     setInterval(() => {
       addSensorDataWithPrediction();
-    }, 3000);
+    }, 3000); // 3 seconds interval for updates
   </script>
 
 </body>
