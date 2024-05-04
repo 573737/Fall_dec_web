@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Real-Time Sensor Data with Model Prediction</title>
@@ -23,6 +24,7 @@
     }
   </style>
 </head>
+
 <body>
   <div id="sensorOutput">
     <h2>Sensor Readings with Model Prediction</h2>
@@ -38,17 +40,17 @@
   </div>
 
   <script>
+    // Initialize TensorFlow.js model
     let model;
-    // Load TensorFlow.js model
     (async () => {
       try {
-        model = await tf.loadGraphModel('./model.json'); // Path to your model
+        model = await tf.loadGraphModel('./model.json'); // Adjust path to your model
       } catch (error) {
         console.error("Error loading model:", error);
       }
     })();
 
-    // Define UI elements to display sensor data
+    // UI elements for sensor data
     const accelerationElement = document.getElementById("acceleration");
     const gyroscopeElement = document.getElementById("gyroscope");
     const orientationElement = document.getElementById("orientation");
@@ -59,7 +61,7 @@
     const rollElement = document.getElementById("roll");
     const predictionElement = document.getElementById("prediction");
 
-    // Initialize velocity and previous timestamp
+    // Initialize velocity and last timestamp
     let velocity = { x: 0, y: 0, z: 0 };
     let lastTimestamp = null;
 
@@ -69,7 +71,7 @@
       return (value - min) / (max - min);
     }
 
-    // Listen for device motion events (for accelerometer and gyroscope)
+    // Velocity calculation
     window.addEventListener("devicemotion", (event) => {
       const { acceleration, rotationRate, timeStamp } = event;
 
@@ -107,7 +109,7 @@
       }
     });
 
-    // Listen for device orientation events
+    // Orientation data and magnetometer
     window.addEventListener("deviceorientation", (event) => {
       const { alpha, beta, gamma } = event;
 
@@ -129,6 +131,13 @@
       rollElement.textContent = `
         ${gamma?.toFixed(2) ?? 'N/A'}
       `;
+
+      // Update magnetometer data based on orientation
+      magnetometerElement.textContent = `
+        X: ${alpha?.toFixed(2) ?? 'N/A'},
+        Y: ${beta?.toFixed(2) ?? 'N/A'},
+        Z: ${gamma?.toFixed(2) ?? 'N/A'}
+      `;
     });
 
     // Function to make a prediction based on sensor data
@@ -138,18 +147,18 @@
           velocity.x,
           velocity.y,
           velocity.z,
-          orientationElement.textContent.match(/Alpha: (\d+\.\d+)/)[1], // Alpha
-          orientationElement.textContent.match(/Beta: (\d+\.\d+)/)[1],  // Beta
-          orientationElement.textContent.match(/Gamma: (\d+\.\d+)/)[1], // Gamma
-          accelerationElement.textContent.match(/X: (\d+\.\d+)/)[1], // Acceleration X
-          accelerationElement.textContent.match(/Y: (\d+\.\d+)/)[1], // Acceleration Y
-          accelerationElement.textContent.match(/Z: (\d+\.\d+)/)[1], // Acceleration Z
-          gyroscopeElement.textContent.match(/X: (\d+\.\d+)/)[1],   // Gyroscope X
-          gyroscopeElement.textContent.match(/Y: (\d+\.\d+)/)[1],   // Gyroscope Y
-          gyroscopeElement.textContent.match(/Z: (\d+\.\d+)/)[1],   // Gyroscope Z
-          magnetometerElement.textContent.match(/X: (\d+\.\d+)/)[1], // Magnetometer X
-          magnetometerElement.textContent.match(/Y: (\d+\.\d+)/)[1], // Magnetometer Y
-          magnetometerElement.textContent.match(/Z: (\d+\.\d+)/)[1]  // Magnetometer Z
+          parseFloat(orientationElement.textContent.match(/Alpha: (\d+\.\d+)/)[1]), // Alpha
+          parseFloat(orientationElement.textContent.match(/Beta: (\d+\.\d+)/)[1]),  // Beta
+          parseFloat(orientationElement.textContent.match(/Gamma: (\d+\.\d+)/)[1]), // Gamma
+          parseFloat(accelerationElement.textContent.match(/X: (\d+\.\d+)/)[1]), // Acceleration X
+          parseFloat(accelerationElement.textContent.match(/Y: (\d+\.\d+)/)[1]), // Acceleration Y
+          parseFloat(accelerationElement.textContent.match(/Z: (\d+\.\d+)/)[1]), // Acceleration Z
+          parseFloat(gyroscopeElement.textContent.match(/X: (\d+\.\d+)/)[1]),   // Gyroscope X
+          parseFloat(gyroscopeElement.textContent.match(/Y: (\d+\.\d+)/)[1]),   // Gyroscope Y
+          parseFloat(gyroscopeElement.textContent.match(/Z: (\d+\.\d+)/)[1]),   // Gyroscope Z
+          parseFloat(magnetometerElement.textContent.match(/X: (\d+\.\d+)/)[1]), // Magnetometer X
+          parseFloat(magnetometerElement.textContent.match(/Y: (\d+\.\d+)/)[1]), // Magnetometer Y
+          parseFloat(magnetometerElement.textContent.match(/Z: (\d+\.\d+)/)[1]), // Magnetometer Z
         ];
 
         const normalizedData = exampleData.map((value, index) => {
@@ -177,4 +186,5 @@
   </script>
 
 </body>
+
 </html>
