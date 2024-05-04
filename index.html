@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <title>Real-Time Sensor Data with Predictions</title>
@@ -103,6 +102,14 @@
       return (value - min) / (max - min);
     }
 
+    // Calculate yaw, pitch, and roll
+    function calculateYawPitchRoll(R) {
+      const yaw = Math.atan2(R[1][0], R[0][0]);
+      const pitch = Math.asin(-R[2][0]);
+      const roll = Math.atan2(R[2][1], R[2][2]);
+      return { yaw, pitch, roll };
+    }
+
     // Function to add a row with prediction
     async function addSensorDataWithPrediction() {
       const newRow = document.createElement("tr");
@@ -115,40 +122,48 @@
         orientation: { min: 0, max: 360 },
         acceleration: { min: -10, max: 10 },
         gyroscope: { min: -250, max: 250 },
-        magnetometer: { min: -100, max: 100 }
+        magnetometer: { min: -100, max: 100 },
       };
 
       // Normalize sensor data using the defined ranges
       const normalizedVelocity = {
         x: normalize(velocity.x, expectedRanges.velocity.min, expectedRanges.velocity.max),
         y: normalize(velocity.y, expectedRanges.velocity.min, expectedRanges.velocity.max),
-        z: normalize(velocity.z, expectedRanges.velocity.min, expectedRanges.velocity.max)
+        z: normalize(velocity.z, expectedRanges.velocity.min, expectedRanges.velocity.max),
       };
 
       const normalizedOrientation = {
         w: normalize(orientation.w, expectedRanges.orientation.min, expectedRanges.orientation.max),
         x: normalize(orientation.x, expectedRanges.orientation.min, expectedRanges.orientation.max),
         y: normalize(orientation.y, expectedRanges.orientation.min, expectedRanges.orientation.max),
-        z: normalize(orientation.z, expectedRanges.orientation.min, expectedRanges.orientation.max)
+        z: normalize(orientation.z, expectedRanges.orientation.min, expectedRanges.orientation.max),
       };
 
       const normalizedAcceleration = {
         x: normalize(acceleration.x, expectedRanges.acceleration.min, expectedRanges.acceleration.max),
         y: normalize(acceleration.y, expectedRanges.acceleration.min, expectedRanges.acceleration.max),
-        z: normalize(acceleration.z, expectedRanges.acceleration.min, expectedRanges.acceleration.max)
+        z: normalize(acceleration.z, expectedRanges.acceleration.min, expectedRanges.acceleration.max),
       };
 
       const normalizedGyroscope = {
         x: normalize(gyroscope.x, expectedRanges.gyroscope.min, expectedRanges.gyroscope.max),
         y: normalize(gyroscope.y, expectedRanges.gyroscope.min, expectedRanges.gyroscope.max),
-        z: normalize(gyroscope.z, expectedRanges.gyroscope.min, expectedRanges.gyroscope.max)
+        z: normalize(gyroscope.z, expectedRanges.gyroscope.min, expectedRanges.gyroscope.max),
       };
 
       const normalizedMagnetometer = {
         x: normalize(magnetometer.x, expectedRanges.magnetometer.min, expectedRanges.magnetometer.max),
         y: normalize(magnetometer.y, expectedRanges.magnetometer.min, expectedRanges.magnetometer.max),
-        z: normalize(magnetometer.z, expectedRanges.magnetometer.min, expectedRanges.magnetometer.max)
+        z: normalize(magnetometer.z, expectedRanges.magnetometer.min, expectedRanges.magnetometer.max),
       };
+
+      const orientationMatrix = [
+        [Math.cos(orientation.w), -Math.sin(orientation.w), 0],
+        [Math.sin(orientation.w), Math.cos(orientation.w), 0],
+        [0, 0, 1]
+      ];
+
+      const { yaw, pitch, roll } = calculateYawPitchRoll(orientationMatrix);
 
       const exampleData = [
         normalizedVelocity.x,
@@ -167,9 +182,9 @@
         normalizedMagnetometer.x,
         normalizedMagnetometer.y,
         normalizedMagnetometer.z,
-        normalizedOrientation.y, // Roll
-        normalizedOrientation.x, // Pitch
-        normalizedOrientation.w // Yaw
+        roll,
+        pitch,
+        yaw,
       ];
 
       let predictionValue = "N/A";
@@ -197,9 +212,9 @@
     <td>${normalizedMagnetometer.x.toFixed(2)}</td>
     <td>${normalizedMagnetometer.y.toFixed(2)}</td>
     <td>${normalizedMagnetometer.z.toFixed(2)}</td>
-    <td>${normalizedOrientation.y.toFixed(2)}</td> 
-    <td>${normalizedOrientation.x.toFixed(2)}</td> 
-    <td>${normalizedOrientation.w.toFixed(2)}</td> 
+    <td>${roll.toFixed(2)}</td>
+    <td>${pitch.toFixed(2)}</td>
+    <td>${yaw.toFixed(2)}</td>
     <td>${predictionValue}</td>
   `;
 
@@ -250,5 +265,4 @@
   </script>
 
 </body>
-
 </html>
