@@ -94,24 +94,24 @@
         lastTimestamp = timeStamp;
 
         accelerationElement.textContent = `
-      X: ${acceleration.x?.toFixed(2) ?? 'N/A'},
-      Y: ${acceleration.y?.toFixed(2) ?? 'N/A'},
-      Z: ${acceleration.z?.toFixed(2) ?? 'N/A'}
+      X: ${acceleration.x?.toFixed(5) ?? 'N/A'},
+      Y: ${acceleration.y?.toFixed(5) ?? 'N/A'},
+      Z: ${acceleration.z?.toFixed(5) ?? 'N/A'}
     `;
       }
 
       // Update velocity display
       velocityElement.textContent = `
-    X: ${velocity.x.toFixed(2)},
-    Y: ${velocity.y.toFixed(2)},
-    Z: ${velocity.z.toFixed(2)}
+    X: ${velocity.x.toFixed(5)},
+    Y: ${velocity.y.toFixed(5)},
+    Z: ${velocity.z.toFixed(5)}
   `;
 
       if (rotationRate) {
         gyroscopeElement.textContent = `
-      X: ${rotationRate.alpha?.toFixed(2) ?? 'N/A'},
-      Y: ${rotationRate.beta?.toFixed(2) ?? 'N/A'},
-      Z: ${rotationRate.gamma?.toFixed(2) ?? 'N/A'}
+      X: ${rotationRate.alpha?.toFixed(5) ?? 'N/A'},
+      Y: ${rotationRate.beta?.toFixed(5) ?? 'N/A'},
+      Z: ${rotationRate.gamma?.toFixed(5) ?? 'N/A'}
     `;
       }
     });
@@ -121,22 +121,22 @@
       const { alpha, beta, gamma } = event;
 
       orientationElement.textContent = `
-    Alpha: ${alpha?.toFixed(2) ?? 'N/A'},
-    Beta: ${beta?.toFixed(2) ?? 'N/A'},
-    Gamma: ${gamma?.toFixed(2) ?? 'N/A'}
+    Alpha: ${alpha?.toFixed(5) ?? 'N/A'},
+    Beta: ${beta?.toFixed(5) ?? 'N/A'},
+    Gamma: ${gamma?.toFixed(5) ?? 'N/A'}
   `;
 
       // Update yaw, pitch, and roll
       yawElement.textContent = `
-    ${alpha?.toFixed(2) ?? 'N/A'}
+    ${alpha?.toFixed(5) ?? 'N/A'}
   `;
 
       pitchElement.textContent = `
-    ${beta?.toFixed(2) ?? 'N/A'}
+    ${beta?.toFixed(5) ?? 'N/A'}
   `;
 
       rollElement.textContent = `
-    ${gamma?.toFixed(2) ?? 'N/A'}
+    ${gamma?.toFixed(5) ?? 'N/A'}
   `;
     });
 
@@ -146,9 +146,9 @@
         const { alpha, beta, gamma } = event;
 
         magnetometerElement.textContent = `
-      X: ${alpha?.toFixed(2) ?? 'N/A'},
-      Y: ${beta?.toFixed(2) ?? 'N/A'},
-      Z: ${gamma?.toFixed(2) ?? 'N/A'}
+      X: ${alpha?.toFixed(5) ?? 'N/A'},
+      Y: ${beta?.toFixed(5) ?? 'N/A'},
+      Z: ${gamma?.toFixed(5) ?? 'N/A'}
     `;
       });
     }
