@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
-  <title>Real-Time Sensor Data with Predictions</title>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script> <!-- TensorFlow.js -->
+  <title>Heart Rate Sensor Data</title>
   <style>
     body {
       display: flex;
@@ -21,248 +21,50 @@
       background-color: white;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     }
-
-    #sensorTable {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    #sensorTable th,
-    #sensorTable td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: center;
-    }
-
-    #sensorTable th {
-      background-color: #f2f2f2;
-    }
   </style>
 </head>
 
 <body>
   <div id="sensorOutput">
-    <h2>Sensor Data Table with Predictions</h2>
-    <table id="sensorTable">
-      <thead>
-        <tr>
-          <th>Time</th>
-          <th>VelInc_X</th>
-          <th>VelInc_Y</th>
-          <th>VelInc_Z</th>
-          <th>OriInc_w</th>
-          <th>OriInc_x</th>
-          <th>OriInc_y</th>
-          <th>OriInc_z</th>
-          <th>Acc_X</th>
-          <th>Acc_Y</th>
-          <th>Acc_Z</th>
-          <th>Gyr_X</th>
-          <th>Gyr_Y</th>
-          <th>Gyr_Z</th>
-          <th>Mag_X</th>
-          <th>Mag_Y</th>
-          <th>Mag_Z</th>
-          <th>Roll</th>
-          <th>Pitch</th>
-          <th>Yaw</th>
-          <th>Prediction</th> <!-- New prediction column -->
-        </tr>
-      </thead>
-      <tbody>
-        <!-- Rows will be added here -->
-      </tbody>
-    </table>
+    <h2>Heart Rate Monitor</h2>
+    <p>Heart Rate (BPM): <span id="heartRate">N/A</span></p>
+    <button id="connectButton">Connect to Heart Rate Sensor</button>
   </div>
 
   <script>
-    // Load TensorFlow.js model
-    let model;
-    (async () => {
+    const heartRateElement = document.getElementById("heartRate");
+    const connectButton = document.getElementById("connectButton");
+
+    connectButton.addEventListener("click", async () => {
       try {
-        model = await tf.loadGraphModel('./model.json'); // Path to your TensorFlow.js model
+        // Request device with heart rate service
+        const device = await navigator.bluetooth.requestDevice({
+          filters: [{ services: ['heart_rate'] }],
+        });
+
+        // Connect to the GATT server
+        const server = await device.gatt.connect();
+
+        // Get the heart rate service
+        const service = await server.getPrimaryService('heart_rate');
+
+        // Get the heart rate measurement characteristic
+        const characteristic = await service.getCharacteristic('heart_rate_measurement');
+
+        // Listen for changes in heart rate data
+        characteristic.addEventListener('characteristicvaluechanged', (event) => {
+          const heartRate = event.target.value.getUint8(1);
+          heartRateElement.textContent = heartRate;
+        });
+
+        // Start notifications to receive heart rate data
+        await characteristic.startNotifications();
       } catch (error) {
-        console.error("Error loading model:", error);
-      }
-    })();
-
-    const sensorTableBody = document.getElementById("sensorTable").querySelector("tbody");
-
-    // Define sensor data and previous timestamp
-    let velocity = { x: 0, y: 0, z: 0 };
-    let orientation = { w: 0, x: 0, y: 0, z: 0 };
-    let acceleration = { x: 0, y: 0, z: 0 };
-    let gyroscope = { x: 0, y: 0, z: 0 };
-    let magnetometer = { x: 0, y: 0, z: 0 };
-
-    let lastTimestamp = null;
-
-    // Normalize sensor data
-    function normalize(value, min, max) {
-      return (value - min) / (max - min);
-    }
-
-    // Calculate yaw, pitch, and roll
-    function calculateYawPitchRoll(R) {
-      const yaw = Math.atan2(R[1][0], R[0][0]);
-      const pitch = Math.asin(-R[2][0]);
-      const roll = Math.atan2(R[2][1], R[2][2]);
-      return { yaw, pitch, roll };
-    }
-
-    // Function to add a row with prediction
-    async function addSensorDataWithPrediction() {
-      const newRow = document.createElement("tr");
-
-      const currentTime = new Date().toLocaleTimeString();
-
-      // Define normalization ranges for each sensor
-      const expectedRanges = {
-        velocity: { min: -10, max: 10 },
-        orientation: { min: 0, max: 360 },
-        acceleration: { min: -10, max: 10 },
-        gyroscope: { min: -250, max: 250 },
-        magnetometer: { min: -100, max: 100 },
-      };
-
-      // Normalize sensor data using the defined ranges
-      const normalizedVelocity = {
-        x: normalize(velocity.x, expectedRanges.velocity.min, expectedRanges.velocity.max),
-        y: normalize(velocity.y, expectedRanges.velocity.min, expectedRanges.velocity.max),
-        z: normalize(velocity.z, expectedRanges.velocity.min, expectedRanges.velocity.max),
-      };
-
-      const normalizedOrientation = {
-        w: normalize(orientation.w, expectedRanges.orientation.min, expectedRanges.orientation.max),
-        x: normalize(orientation.x, expectedRanges.orientation.min, expectedRanges.orientation.max),
-        y: normalize(orientation.y, expectedRanges.orientation.min, expectedRanges.orientation.max),
-        z: normalize(orientation.z, expectedRanges.orientation.min, expectedRanges.orientation.max),
-      };
-
-      const normalizedAcceleration = {
-        x: normalize(acceleration.x, expectedRanges.acceleration.min, expectedRanges.acceleration.max),
-        y: normalize(acceleration.y, expectedRanges.acceleration.min, expectedRanges.acceleration.max),
-        z: normalize(acceleration.z, expectedRanges.acceleration.min, expectedRanges.acceleration.max),
-      };
-
-      const normalizedGyroscope = {
-        x: normalize(gyroscope.x, expectedRanges.gyroscope.min, expectedRanges.gyroscope.max),
-        y: normalize(gyroscope.y, expectedRanges.gyroscope.min, expectedRanges.gyroscope.max),
-        z: normalize(gyroscope.z, expectedRanges.gyroscope.min, expectedRanges.gyroscope.max),
-      };
-
-      const normalizedMagnetometer = {
-        x: normalize(magnetometer.x, expectedRanges.magnetometer.min, expectedRanges.magnetometer.max),
-        y: normalize(magnetometer.y, expectedRanges.magnetometer.min, expectedRanges.magnetometer.max),
-        z: normalize(magnetometer.z, expectedRanges.magnetometer.min, expectedRanges.magnetometer.max),
-      };
-
-      const orientationMatrix = [
-        [Math.cos(orientation.w), -Math.sin(orientation.w), 0],
-        [Math.sin(orientation.w), Math.cos(orientation.w), 0],
-        [0, 0, 1]
-      ];
-
-      const { yaw, pitch, roll } = calculateYawPitchRoll(orientationMatrix);
-
-      const exampleData = [
-        normalizedVelocity.x,
-        normalizedVelocity.y,
-        normalizedVelocity.z,
-        normalizedOrientation.w,
-        normalizedOrientation.x,
-        normalizedOrientation.y,
-        normalizedOrientation.z,
-        normalizedAcceleration.x,
-        normalizedAcceleration.y,
-        normalizedAcceleration.z,
-        normalizedGyroscope.x,
-        normalizedGyroscope.y,
-        normalizedGyroscope.z,
-        normalizedMagnetometer.x,
-        normalizedMagnetometer.y,
-        normalizedMagnetometer.z,
-        roll,
-        pitch,
-        yaw,
-      ];
-
-      let predictionValue = "N/A";
-      if (model) {
-        const inputTensor = tf.tensor2d([exampleData], [1, 19], 'float32'); // Create input tensor
-        const prediction = model.predict(inputTensor);
-        predictionValue = (await prediction.data())[0].toFixed(2);
-      }
-
-      newRow.innerHTML = `
-    <td>${currentTime}</td>
-    <td>${normalizedVelocity.x.toFixed(2)}</td>
-    <td>${normalizedVelocity.y.toFixed(2)}</td>
-    <td>${normalizedVelocity.z.toFixed(2)}</td>
-    <td>${normalizedOrientation.w.toFixed(2)}</td>
-    <td>${normalizedOrientation.x.toFixed(2)}</td>
-    <td>${normalizedOrientation.y.toFixed(2)}</td>
-    <td>${normalizedOrientation.z.toFixed(2)}</td>
-    <td>${normalizedAcceleration.x.toFixed(2)}</td>
-    <td>${normalizedAcceleration.y.toFixed(2)}</td>
-    <td>${normalizedAcceleration.z.toFixed(2)}</td>
-    <td>${normalizedGyroscope.x.toFixed(2)}</td>
-    <td>${normalizedGyroscope.y.toFixed(2)}</td>
-    <td>${normalizedGyroscope.z.toFixed(2)}</td>
-    <td>${normalizedMagnetometer.x.toFixed(2)}</td>
-    <td>${normalizedMagnetometer.y.toFixed(2)}</td>
-    <td>${normalizedMagnetometer.z.toFixed(2)}</td>
-    <td>${roll.toFixed(2)}</td>
-    <td>${pitch.toFixed(2)}</td>
-    <td>${yaw.toFixed(2)}</td>
-    <td>${predictionValue}</td>
-  `;
-
-      sensorTableBody.appendChild(newRow);
-    }
-
-    // Listen for device motion events
-    window.addEventListener("devicemotion", (event) => {
-      const { acceleration, rotationRate, timeStamp } = event;
-
-      if (acceleration) {
-        if (lastTimestamp !== null) {
-          const dt = (timeStamp - lastTimestamp) / 1000;
-
-          velocity.x += (acceleration.x ?? 0) * dt;
-          velocity.y += (acceleration.y ?? 0) * dt;
-          velocity.z += (acceleration.z ?? 0) * dt;
-        }
-
-        lastTimestamp = timeStamp;
-
-        acceleration.x = acceleration.x ?? 0;
-        acceleration.y = acceleration.y ?? 0;
-        acceleration.z = acceleration.z ?? 0;
-      }
-
-      if (rotationRate) {
-        gyroscope.x = rotationRate.alpha ?? 0;
-        gyroscope.y = rotationRate.beta ?? 0;
-        gyroscope.z = rotationRate.gamma ?? 0;
+        console.error('Error connecting to heart rate sensor:', error);
       }
     });
-
-    // Listen for device orientation events
-    window.addEventListener("deviceorientation", (event) => {
-      const { alpha, beta, gamma } = event;
-
-      orientation.w = alpha ?? 0;
-      orientation.x = beta ?? 0;
-      orientation.y = gamma ?? 0;
-      orientation.z = alpha ?? 0;
-    });
-
-    // Update the sensor data table with predictions every 3 seconds
-    setInterval(() => {
-      addSensorDataWithPrediction();
-    }, 3000); // 3-second interval
   </script>
 
 </body>
+
 </html>
