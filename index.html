@@ -1,9 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
-  <title>Real-Time Sensor Data with Model Prediction</title>
+  <title>Real-Time Sensor Data with Predictions</title>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script> <!-- TensorFlow.js -->
   <style>
     body {
@@ -22,56 +21,197 @@
       background-color: white;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     }
+
+    #sensorTable {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    #sensorTable th,
+    #sensorTable td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+
+    #sensorTable th {
+      background-color: #f2f2f2;
+    }
   </style>
 </head>
-
 <body>
   <div id="sensorOutput">
-    <h2>Sensor Readings with Model Prediction</h2>
-    <p>Accelerometer (X, Y, Z): <span id="acceleration">N/A</span></p>
-    <p>Gyroscope (X, Y, Z): <span id="gyroscope">N/A</span></p>
-    <p>Orientation (Alpha, Beta, Gamma): <span id="orientation">N/A</span></p>
-    <p>Velocity (X, Y, Z): <span id="velocity">N/A</span></p>
-    <p>Magnetometer (X, Y, Z): <span id="magnetometer">N/A</span></p>
-    <p>Yaw: <span id="yaw">N/A</span></p>
-    <p>Pitch: <span id="pitch">N/A</span></p>
-    <p>Roll: <span id="roll">N/A</span></p>
-    <p>Prediction: <span id="prediction">N/A</span></p>
+    <h2>Sensor Data Table with Predictions</h2>
+    <table id="sensorTable">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>VelInc_X</th>
+          <th>VelInc_Y</th>
+          <th>VelInc_Z</th>
+          <th>OriInc_w</th>
+          <th>OriInc_x</th>
+          <th>OriInc_y</th>
+          <th>OriInc_z</th>
+          <th>Acc_X</th>
+          <th>Acc_Y</th>
+          <th>Acc_Z</th>
+          <th>Gyr_X</th>
+          <th>Gyr_Y</th>
+          <th>Gyr_Z</th>
+          <th>Mag_X</th>
+          <th>Mag_Y</th>
+          <th>Mag_Z</th>
+          <th>Roll</th>
+          <th>Pitch</th>
+          <th>Yaw</th>
+          <th>Prediction</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Rows will be added here -->
+      </tbody>
+    </table>
   </div>
 
   <script>
-    // Initialize TensorFlow.js model
     let model;
+
+    // Load the model and ensure it's ready
     (async () => {
       try {
-        model = await tf.loadGraphModel('./model.json'); // Adjust path to your model
+        model = await tf.loadGraphModel('./model.json');
       } catch (error) {
         console.error("Error loading model:", error);
       }
     })();
 
-    // UI elements for sensor data
-    const accelerationElement = document.getElementById("acceleration");
-    const gyroscopeElement = document.getElementById("gyroscope");
-    const orientationElement = document.getElementById("orientation");
-    const velocityElement = document.getElementById("velocity");
-    const magnetometerElement = document.getElementById("magnetometer");
-    const yawElement = document.getElementById("yaw");
-    const pitchElement = document.getElementById("pitch");
-    const rollElement = document.getElementById("roll");
-    const predictionElement = document.getElementById("prediction");
+    const sensorTableBody = document.getElementById("sensorTable").querySelector("tbody");
 
-    // Initialize velocity and last timestamp
+    // Define sensor data and initialize with default values
     let velocity = { x: 0, y: 0, z: 0 };
+    let orientation = { w: 0, x: 0, y: 0, z: 0 };
+    let acceleration = { x: 0, y: 0, z: 0 };
+    let gyroscope = { x: 0, y: 0, z: 0 };
+    let magnetometer = { x: 0, y: 0, z: 0 };
+
     let lastTimestamp = null;
 
-    // Normalization function
+    // Normalization function with boundary checks
     function normalize(value, min, max) {
       if (min >= max) return 0; // Avoid division by zero
       return (value - min) / (max - min);
     }
 
-    // Velocity calculation
+    async function addSensorDataWithPrediction() {
+      if (!model) {
+        console.warn("Model not loaded");
+        return;
+      }
+
+      const newRow = document.createElement("tr");
+      const currentTime = new Date().toLocaleTimeString();
+
+      const expectedRanges = {
+        velocity: { min: -10, max: 10 },
+        orientation: { min: 0, max: 360 },
+        acceleration: { min: -10, max: 10 },
+        gyroscope: { min: -250, max: 250 },
+        magnetometer: { min: -100, max: 100 },
+      };
+
+      // Normalize sensor data
+      const normalizedVelocity = {
+        x: normalize(velocity.x, expectedRanges.velocity.min, expectedRanges.velocity.max),
+        y: normalize(velocity.y, expectedRanges.velocity.min, expectedRanges.velocity.max),
+        z: normalize(velocity.z, expectedRanges.velocity.min, expectedRanges.velocity.max),
+      };
+
+      const normalizedOrientation = {
+        w: normalize(orientation.w, expectedRanges.orientation.min, expectedRanges.orientation.max),
+        x: normalize(orientation.x, expectedRanges.orientation.min, expectedRanges.orientation.max),
+        y: normalize(orientation.y, expectedRanges.orientation.min, expectedRanges.orientation.max),
+        z: normalize(orientation.z, expectedRanges.orientation.min, expectedRanges.orientation.max),
+      };
+
+      const normalizedAcceleration = {
+        x: normalize(acceleration.x, expectedRanges.acceleration.min, expectedRanges.acceleration.max),
+        y: normalize(acceleration.y, expectedRanges.acceleration.min, expectedRanges.acceleration.max),
+        z: normalize(acceleration.z, expectedRanges.acceleration.min, expectedRanges.acceleration.max),
+      };
+
+      const normalizedGyroscope = {
+        x: normalize(gyroscope.x, expectedRanges.gyroscope.min, expectedRanges.gyroscope.max),
+        y: normalize(gyroscope.y, expectedRanges.gyroscope.min, expectedRanges.gyroscope.max),
+        z: normalize(gyroscope.z, expectedRanges.gyroscope.min, expectedRanges.gyroscope.max),
+      };
+
+      const normalizedMagnetometer = {
+        x: normalize(magnetometer.x, expectedRanges.magnetometer.min, expectedRanges.magnetometer.max),
+        y: normalize(magnetometer.y, expectedRanges.magnetometer.min, expectedRanges.magnetometer.max),
+        z: normalize(magnetometer.z, expectedRanges.magnetometer.min, expectedRanges.magnetometer.max),
+      };
+
+      const exampleData = [
+        normalizedVelocity.x,
+        normalizedVelocity.y,
+        normalizedVelocity.z,
+        normalizedOrientation.w,
+        normalizedOrientation.x,
+        normalizedOrientation.y,
+        normalizedOrientation.z,
+        normalizedAcceleration.x,
+        normalizedAcceleration.y,
+        normalizedAcceleration.z,
+        normalizedGyroscope.x,
+        normalizedGyroscope.y,
+        normalizedGyroscope.z,
+        normalizedMagnetometer.x,
+        normalizedMagnetometer.y,
+        normalizedMagnetometer.z,
+        normalizedOrientation.x, // Roll
+        normalizedOrientation.y, // Pitch
+        normalizedOrientation.w, // Yaw
+      ];
+
+      // Make a prediction
+      let predictionValue = "N/A";
+      if (model) {
+        const inputTensor = tf.tensor2d([exampleData], [1, 19], 'float32'); 
+        const prediction = model.predict(inputTensor);
+        predictionValue = (await prediction.data())[0].toFixed(2); // 2 decimal places
+        inputTensor.dispose(); // Dispose of the tensor to free memory
+      }
+
+      // Add the row with sensor data and prediction to the table
+      newRow.innerHTML = `
+        <td>${currentTime}</td>
+        <td>${normalizedVelocity.x.toFixed(2)}</td>
+        <td>${normalizedVelocity.y.toFixed(2)}</td>
+        <td>${normalizedVelocity.z.toFixed(2)}</td>
+        <td>${normalizedOrientation.w.toFixed(2)}</td>
+        <td>${normalizedOrientation.x.toFixed(2)}</td>
+        <td>${normalizedOrientation.y.toFixed(2)}</td>
+        <td>${normalizedOrientation.z.toFixed(2)}</td>
+        <td>${normalizedAcceleration.x.toFixed(2)}</td>
+        <td>${normalizedAcceleration.y.toFixed(2)}</td>
+        <td>${normalizedAcceleration.z.toFixed(2)}</td>
+        <td>${normalizedGyroscope.x.toFixed(2)}</td>
+        <td>${normalizedGyroscope.y.toFixed(2)}</td>
+        <td>${normalizedGyroscope.z.toFixed(2)}</td>
+        <td>${normalizedMagnetometer.x.toFixed(2)}</td>
+        <td>${normalizedMagnetometer.y.toFixed(2)}</td>
+        <td>${normalizedMagnetometer.z.toFixed(2)}</td>
+        <td>${normalizedOrientation.x.toFixed(2)}</td> 
+        <td>${normalizedOrientation.y.toFixed(2)}</td> 
+        <td>${normalizedOrientation.w.toFixed(2)}</td> 
+        <td>${predictionValue}</td>
+      `;
+
+      sensorTableBody.appendChild(newRow);
+    }
+
+    // Event listeners for device sensors
     window.addEventListener("devicemotion", (event) => {
       const { acceleration, rotationRate, timeStamp } = event;
 
@@ -86,105 +226,30 @@
 
         lastTimestamp = timeStamp;
 
-        accelerationElement.textContent = `
-          X: ${acceleration.x?.toFixed(2) ?? 'N/A'},
-          Y: ${acceleration.y?.toFixed(2) ?? 'N/A'},
-          Z: ${acceleration.z?.toFixed(2) ?? 'N/A'}
-        `;
+        acceleration.x = acceleration.x ?? 0;
+        acceleration.y = acceleration.y ?? 0;
+        acceleration.z = acceleration.z ?? 0;
       }
 
-      // Update velocity display
-      velocityElement.textContent = `
-        X: ${velocity.x.toFixed(2)},
-        Y: ${velocity.y.toFixed(2)},
-        Z: ${velocity.z.toFixed(2)}
-      `;
-
       if (rotationRate) {
-        gyroscopeElement.textContent = `
-          X: ${rotationRate.alpha?.toFixed(2) ?? 'N/A'},
-          Y: ${rotationRate.beta?.toFixed(2) ?? 'N/A'},
-          Z: ${rotationRate.gamma?.toFixed(2) ?? 'N/A'}
-        `;
+        gyroscope.x = rotationRate.alpha ?? 0;
+        gyroscope.y = rotationRate.beta ?? 0;
+        gyroscope.z = rotationRate.gamma ?? 0;
       }
     });
 
-    // Orientation data and magnetometer
     window.addEventListener("deviceorientation", (event) => {
       const { alpha, beta, gamma } = event;
 
-      orientationElement.textContent = `
-        Alpha: ${alpha?.toFixed(2) ?? 'N/A'},
-        Beta: ${beta?.toFixed(2) ?? 'N/A'},
-        Gamma: ${gamma?.toFixed(2) ?? 'N/A'}
-      `;
-
-      // Update yaw, pitch, and roll
-      yawElement.textContent = `
-        ${alpha?.toFixed(2) ?? 'N/A'}
-      `;
-
-      pitchElement.textContent = `
-        ${beta?.toFixed(2) ?? 'N/A'}
-      `;
-
-      rollElement.textContent = `
-        ${gamma?.toFixed(2) ?? 'N/A'}
-      `;
-
-      // Update magnetometer data based on orientation
-      magnetometerElement.textContent = `
-        X: ${alpha?.toFixed(2) ?? 'N/A'},
-        Y: ${beta?.toFixed(2) ?? 'N/A'},
-        Z: ${gamma?.toFixed(2) ?? 'N/A'}
-      `;
+      orientation.w = alpha ?? 0;
+      orientation.x = beta ?? 0;
+      orientation.y = gamma ?? 0;
+      orientation.z = alpha ?? 0;
     });
 
-    // Function to make a prediction based on sensor data
-    async function makePrediction() {
-      if (model) {
-        const exampleData = [
-          velocity.x,
-          velocity.y,
-          velocity.z,
-          parseFloat(orientationElement.textContent.match(/Alpha: (\d+\.\d+)/)[1]), // Alpha
-          parseFloat(orientationElement.textContent.match(/Beta: (\d+\.\d+)/)[1]),  // Beta
-          parseFloat(orientationElement.textContent.match(/Gamma: (\d+\.\d+)/)[1]), // Gamma
-          parseFloat(accelerationElement.textContent.match(/X: (\d+\.\d+)/)[1]), // Acceleration X
-          parseFloat(accelerationElement.textContent.match(/Y: (\d+\.\d+)/)[1]), // Acceleration Y
-          parseFloat(accelerationElement.textContent.match(/Z: (\d+\.\d+)/)[1]), // Acceleration Z
-          parseFloat(gyroscopeElement.textContent.match(/X: (\d+\.\d+)/)[1]),   // Gyroscope X
-          parseFloat(gyroscopeElement.textContent.match(/Y: (\d+\.\d+)/)[1]),   // Gyroscope Y
-          parseFloat(gyroscopeElement.textContent.match(/Z: (\d+\.\d+)/)[1]),   // Gyroscope Z
-          parseFloat(magnetometerElement.textContent.match(/X: (\d+\.\d+)/)[1]), // Magnetometer X
-          parseFloat(magnetometerElement.textContent.match(/Y: (\d+\.\d+)/)[1]), // Magnetometer Y
-          parseFloat(magnetometerElement.textContent.match(/Z: (\d+\.\d+)/)[1]), // Magnetometer Z
-        ];
-
-        const normalizedData = exampleData.map((value, index) => {
-          const min = (index < 3 || (index >= 6 && index <= 8)) ? -10 : (index === 3) ? 0 : -250;
-          const max = (index < 3 || (index >= 6 && index <= 8)) ? 10 : (index === 3) ? 360 : 250;
-
-          return normalize(value, min, max);
-        });
-
-        const inputTensor = tf.tensor2d([normalizedData], [1, normalizedData.length], 'float32');
-        const prediction = model.predict(inputTensor);
-        const predictedValue = (await prediction.data())[0].toFixed(2);
-        inputTensor.dispose(); // Dispose of the tensor to free memory
-
-        predictionElement.textContent = predictedValue;
-      } else {
-        console.warn("Model not loaded");
-      }
-    }
-
-    // Set interval to update predictions based on sensor data
     setInterval(() => {
-      makePrediction();
+      addSensorDataWithPrediction();
     }, 3000); // 3-second interval
   </script>
-
 </body>
-
 </html>
