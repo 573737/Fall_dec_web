@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
   <meta charset="UTF-8">
   <title>Real-Time Sensor Data with Predictions</title>
@@ -40,7 +39,6 @@
     }
   </style>
 </head>
-
 <body>
   <div id="sensorOutput">
     <h2>Sensor Data Table with Predictions</h2>
@@ -48,13 +46,13 @@
       <thead>
         <tr>
           <th>Time</th>
-          <th>VelInc_X</th>
-          <th>VelInc_Y</th>
-          <th>VelInc_Z</th>
-          <th>OriInc_w</th>
-          <th>OriInc_x</th>
-          <th>OriInc_y</th>
-          <th>OriInc_z</th>
+          <th>Vel_X</th>
+          <th>Vel_Y</th>
+          <th>Vel_Z</th>
+          <th>Ori_W</th>
+          <th>Ori_X</th>
+          <th>Ori_Y</th>
+          <th>Ori_Z</th>
           <th>Acc_X</th>
           <th>Acc_Y</th>
           <th>Acc_Z</th>
@@ -79,10 +77,10 @@
   <script>
     let model;
 
-    // Load the model
+    // Load TensorFlow.js model
     (async () => {
       try {
-        model = await tf.loadGraphModel('./model.json');
+        model = await tf.loadGraphModel('./model.json'); // Update with your model path
       } catch (error) {
         console.error("Error loading model:", error);
       }
@@ -92,12 +90,11 @@
 
     // Initialize sensor data
     let velocity = { x: 0, y: 0, z: 0 };
-    let orientation = { w: 0, x: 0, y: 0, z: 0 };
     let lastVelocity = { x: 0, y: 0, z: 0 }; // To calculate acceleration
-    let acceleration = { x: 0, y: 0, z: 0 };
+    let orientation = { w: 0, x: 0, y: 0, z: 0 };
+    let acceleration = { x: 0, y: 0, z: 0 }; // Updated acceleration
     let gyroscope = { x: 0, y: 0, z: 0 };
     let magnetometer = { x: 0, y: 0, z: 0 };
-
     let lastTimestamp = null;
 
     // Normalization function
@@ -136,9 +133,11 @@
       const newRow = document.createElement("tr");
       const currentTime = new Date().toLocaleTimeString();
 
-      // Calculate acceleration from velocity
+      const { yaw, pitch, roll } = calculateYawPitchRoll(orientation);
+
+      // Calculate acceleration from change in velocity
       if (lastTimestamp !== null) {
-        const dt = (Date.now() - lastTimestamp) / 1000; // Time in seconds
+        const dt = (Date.now() - lastTimestamp) / 1000; // Convert to seconds
 
         if (dt > 0) {
           acceleration.x = (velocity.x - lastVelocity.x) / dt;
@@ -150,8 +149,6 @@
       // Update last velocity and timestamp
       lastVelocity = { ...velocity };
       lastTimestamp = Date.now();
-
-      const { yaw, pitch, roll } = calculateYawPitchRoll(orientation);
 
       const normalizedVelocity = {
         x: normalize(velocity.x, -10, 10),
@@ -241,6 +238,7 @@
       sensorTableBody.appendChild(newRow);
     }
 
+    // Event listeners for device motion and orientation events
     window.addEventListener("devicemotion", (event) => {
       const { acceleration, rotationRate, timeStamp } = event;
 
@@ -254,10 +252,6 @@
         }
 
         lastTimestamp = timeStamp;
-
-        acceleration.x = acceleration.x ?? 0;
-        acceleration.y = acceleration.y ?? 0;
-        acceleration.z = acceleration.z ?? 0;
       }
 
       if (rotationRate) {
@@ -281,5 +275,4 @@
     }, 3000); // 3-second interval
   </script>
 </body>
-
 </html>
