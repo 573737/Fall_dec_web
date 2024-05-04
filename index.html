@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Real-Time Sensor Data with Predictions</title>
@@ -39,6 +40,7 @@
     }
   </style>
 </head>
+
 <body>
   <div id="sensorOutput">
     <h2>Sensor Data Table with Predictions</h2>
@@ -91,6 +93,7 @@
     // Initialize sensor data
     let velocity = { x: 0, y: 0, z: 0 };
     let orientation = { w: 0, x: 0, y: 0, z: 0 };
+    let lastVelocity = { x: 0, y: 0, z: 0 }; // To calculate acceleration
     let acceleration = { x: 0, y: 0, z: 0 };
     let gyroscope = { x: 0, y: 0, z: 0 };
     let magnetometer = { x: 0, y: 0, z: 0 };
@@ -132,6 +135,21 @@
 
       const newRow = document.createElement("tr");
       const currentTime = new Date().toLocaleTimeString();
+
+      // Calculate acceleration from velocity
+      if (lastTimestamp !== null) {
+        const dt = (Date.now() - lastTimestamp) / 1000; // Time in seconds
+
+        if (dt > 0) {
+          acceleration.x = (velocity.x - lastVelocity.x) / dt;
+          acceleration.y = (velocity.y - lastVelocity.y) / dt;
+          acceleration.z = (velocity.z - lastVelocity.z) / dt;
+        }
+      }
+
+      // Update last velocity and timestamp
+      lastVelocity = { ...velocity };
+      lastTimestamp = Date.now();
 
       const { yaw, pitch, roll } = calculateYawPitchRoll(orientation);
 
@@ -183,9 +201,9 @@
         normalizedMagnetometer.x,
         normalizedMagnetometer.y,
         normalizedMagnetometer.z,
-        pitch, // Roll
-        yaw, // Pitch
-        roll, // Yaw
+        roll, // Roll
+        pitch, // Pitch
+        yaw, // Yaw
       ];
 
       let predictionValue = "N/A";
@@ -196,7 +214,6 @@
         inputTensor.dispose(); // Dispose of the tensor to free memory
       }
 
-      // Add the row to the table with sensor data and prediction
       newRow.innerHTML = `
         <td>${currentTime}</td>
         <td>${normalizedVelocity.x.toFixed(5)}</td>
@@ -215,9 +232,9 @@
         <td>${normalizedMagnetometer.x.toFixed(5)}</td>
         <td>${normalizedMagnetometer.y.toFixed(5)}</td>
         <td>${normalizedMagnetometer.z.toFixed(5)}</td>
+        <td>${roll}</td> 
         <td>${pitch}</td> 
         <td>${yaw}</td> 
-        <td>${roll}</td> 
         <td>${predictionValue}</td>
       `;
 
@@ -264,4 +281,5 @@
     }, 3000); // 3-second interval
   </script>
 </body>
+
 </html>
