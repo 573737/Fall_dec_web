@@ -1,45 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <title>Sensor Readings Widget</title>
-  <style>
-    /* Basic widget styling */
-    .sensor-widget {
-      border: 1px solid #ccc;
-      padding: 10px;
-      border-radius: 5px;
-      max-width: 400px;
-      background-color: #f9f9f9;
-    }
+  <title>Device Motion with Derived Magnetometer and Prediction</title>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script> <!-- Load TensorFlow.js -->
+</head>
 
-    .sensor-section {
-      margin-bottom: 10px;
-    }
+<body>
+  <h1>Sensor Data Display Widget</h1>
 
-    .sensor-section h3 {
-      margin-top: 0;
-    }
+  <!-- Sensor Data Widget -->
+  <div style="border: 1px solid black; padding: 10px; width: 300px;">
+    <h2>Velocity</h2>
+    <p>X: <span id="vel-x">0</span></p>
+    <p>Y: <span id="vel-y">0</span></p>
+    <p>Z: <span id="vel-z">0</span></p>
 
-    .sensor-reading {
-      display: flex;
-      justify-content: space-between;
-      padding: 5px 0;
-    }
-  </style>
+    <h2>Orientation</h2>
+    <p>Alpha: <span id="ori-w">0</span></p>
+    <p>Beta: <span id="ori-x">0</span></p>
+    <p>Gamma: <span id="ori-y">0</span></p>
+
+    <h2>Accelerometer</h2>
+    <p>X: <span id="acc-x">0</span></p>
+    <p>Y: <span id="acc-y">0</span></p>
+    <p>Z: <span id="acc-z">0</span></p>
+
+    <h2>Gyroscope</h2>
+    <p>Alpha: <span id="gyr-x">0</span></p>
+    <p>Beta: <span id="gyr-y">0</span></p>
+    <p>Gamma: <span id="gyr-z">0</span></p>
+
+    <h2>Magnetometer (Derived)</h2>
+    <p>X: <span id="mag-x">0</span></p>
+    <p>Y: <span id="mag-y">0</span></p>
+    <p>Z: <span id="mag-z">0</span></p>
+
+    <h2>Prediction Result</h2>
+    <p>Prediction: <span id="prediction-result">N/A</span></p>
+  </div>
+
   <script>
+    // TensorFlow.js model
+    let model;
+    (async () => {
+      try {
+        model = await tf.loadGraphModel('./model.json'); // Load TensorFlow.js model
+      } catch (error) {
+        console.error("Error loading TensorFlow.js model:", error);
+      }
+    })();
+
+    // Initialize sensor data
     let velX = 0, velY = 0, velZ = 0;
     let lastTimestamp = null;
 
-    // Normalization function
+    // Normalization helper function
     function normalize(value, min, max) {
       return (value - min) / (max - min);
     }
 
+    // Set up sensor data
     let acceleration = { x: 0, y: 0, z: 0 };
     let gyroscope = { x: 0, y: 0, z: 0 };
     let orientation = { alpha: 0, beta: 0, gamma: 0 };
     let derivedMagnetometer = { x: 0, y: 0, z: 0 }; // Placeholder for derived magnetometer
 
+    // Device Motion Event
     if (window.DeviceMotionEvent) {
       window.addEventListener('devicemotion', function (event) {
         const { acceleration: acc, rotationRate, timeStamp } = event;
@@ -64,102 +91,102 @@
       });
     }
 
+    // Device Orientation Event
     if (window.DeviceOrientationEvent) {
       window.addEventListener('deviceorientation', function (event) {
         orientation.alpha = event.alpha ?? 0;
         orientation.beta = event.beta ?? 0;
-        orientation.gamma ?? 0;
+        orientation.gamma = event.gamma ?? 0;
       });
     }
 
-    function updateDerivedMagnetometer() {
+    // Derive magnetometer data based on orientation and other sensors
+    function deriveMagnetometer() {
+      // Example approximation: simple mapping of orientation to a "magnetic" value
+      // This is highly contextual and needs real-world calibration to be accurate
       derivedMagnetometer.x = Math.sin((orientation.alpha || 0) * Math.PI / 180);
       derivedMagnetometer.y = Math.cos((orientation.beta || 0) * Math.PI / 180);
       derivedMagnetometer.z = Math.sin((orientation.gamma || 0) * Math.PI / 180);
     }
 
-    function updateSensorWidget() {
-      // Update accelerometer readings
-      document.getElementById('acc-x').innerText = acceleration.x.toFixed(2);
-      document.getElementById('acc-y').innerText = acceleration.y.toFixed(2);
-      document.getElementById('acc-z').innerText = acceleration.z.toFixed(2);
+    // Function to get normalized data and predict
+    async function predictWithNormalizedData() {
+      // Normalize sensor data
+      const expectedRanges = {
+        velocity: { min: -10, max: 10 },
+        orientation: { min: 0, max: 360 },
+        acceleration: { min: -10, max: 10 },
+        gyroscope: { min: -250, max: 250 },
+        magnetometer: { min: -1, max: 1 }, // Adjusted range for derived magnetometer
+      };
 
-      // Update gyroscope readings
-      document.getElementById('gyr-x').innerText = gyroscope.x.toFixed(2);
-      document.getElementById('gyr-y').innerText gyroscope.y.toFixed(2);
-      document.getElementById('gyr-z').innerText gyroscope.z.toFixed(2);
+      const normalizedVelocity = {
+        x: normalize(velX, expectedRanges.velocity.min, expectedRanges.velocity.max),
+        y: normalize(velY, expectedRanges.velocity.min, expectedRanges.velocity.max),
+        z: normalize(velZ, expectedRanges.velocity.min, expectedRanges.velocity.max),
+      };
 
-      // Update orientation readings
-      document.getElementById('ori-alpha').innerText = orientation.alpha.toFixed(2);
-      document.getElementById('ori-beta').innerText orientation.beta.toFixed(2);
-      document.getElementById('ori-gamma').innerText orientation.gamma.toFixed(2);
+      const normalizedOrientation = {
+        w: normalize(orientation.alpha, expectedRanges.orientation.min, expectedRanges.orientation.max),
+        x: normalize(orientation.beta, expectedRanges.orientation.min, expectedRanges.orientation.max),
+        y: normalize(orientation.gamma, expectedRanges.orientation.min, expectedRanges.orientation.max),
+        z: normalize(orientation.alpha, expectedRanges.orientation.min, expectedRanges.orientation.max),
+      };
 
-      // Update derived magnetometer
-      updateDerivedMagnetometer();
+      const normalizedAcceleration = {
+        x: normalize(acceleration.x, expectedRanges.acceleration.min, expectedRanges.acceleration.max),
+        y: normalize(acceleration.y, expectedRanges.acceleration.min, expectedRanges.acceleration.max),
+        z: normalize(acceleration.z, expectedRanges.acceleration.min, expectedRanges.acceleration.max),
+      };
 
-      document.getElementById('mag-x').innerText = derivedMagnetometer.x.toFixed(2);
-      document.getElementById('mag-y').innerText = derivedMagnetometer.y.toFixed(2);
-      document.getElementById('mag-z').innerText = derivedMagnetometer.z.toFixed(2);
+      const normalizedGyroscope = {
+        x: normalize(gyroscope.x, expectedRanges.gyroscope.min, expectedRanges.gyroscope.max),
+        y: normalize(gyroscope.y, expectedRanges.gyroscope.min, expectedRanges.gyroscope.max),
+        z: normalize(gyroscope.z, expectedRanges.gyroscope.min, expectedRanges.gyroscope.max),
+      };
+
+      deriveMagnetometer(); // Update derived magnetometer values
+
+      const normalizedMagnetometer = {
+        x: normalize(derivedMagnetometer.x, expectedRanges.magnetometer.min, expectedRanges.magnetometer.max),
+        y: normalize(derivedMagnetometer.y, expectedRanges.magnetometer.min, expectedRanges.magnetometer.max),
+        z: normalize(derivedMagnetometer.z, expectedRanges.magnetometer.min, expectedRanges.magnetometer.max),
+      };
+
+      const predictionInput = [
+        normalizedVelocity.x,
+        normalizedVelocity.y,
+        normalizedVelocity.z,
+        normalizedOrientation.w,
+        normalizedOrientation.x,
+        normalizedOrientation.y,
+        normalizedOrientation.z,
+        normalizedAcceleration.x,
+        normalizedAcceleration.y,
+        normalizedAcceleration.z,
+        normalizedGyroscope.x,
+        normalizedGyroscope.y,
+        normalizedGyroscope.z,
+        normalizedMagnetometer.x,
+        normalizedMagnetometer.y,
+        normalizedMagnetometer.z,
+        normalizedOrientation.y, // Roll
+        normalizedOrientation.x, // Pitch
+        normalizedOrientation.w // Yaw
+      ];
+
+      if (model) {
+        const inputTensor = tf.tensor2d([predictionInput], [1, 19], 'float32'); // Tensor with 19 values
+        const prediction = model.predict(inputTensor);
+        const predictionValue = (await prediction.data())[0].toFixed(2);
+
+        document.getElementById('prediction-result').innerText = predictionValue;
+      }
     }
 
-    setInterval(updateSensorWidget, 1000); // Update the widget every second
+    // Predict every few seconds
+    setInterval(predictWithNormalizedData, 3000); // 3-second interval
   </script>
-</head>
-<body>
-  <div class="sensor-widget">
-    <h2>Sensor Readings</h2>
-    
-    <div class="sensor-section">
-      <h3>Accelerometer</h3>
-      <div class="sensor-reading">
-        <span>X:</span> <span id="acc-x">0</span>
-      </div>
-      <div class="sensor-reading">
-        <span>Y:</span> <span id="acc-y">0</span>
-      </div>
-      <div class="sensor-reading">
-        <span>Z:</span> <span id="acc-z">0</span>
-      </div>
-    </div>
-
-    <div class="sensor-section">
-      <h3>Gyroscope</h3>
-      <div class="sensor-reading">
-        <span>X:</span> <span id="gyr-x">0</span>
-      </div>
-      <div class="sensor-reading">
-        <span>Y:</span> <span id="gyr-y">0</span>
-      </div>
-      <div class="sensor-reading">
-        <span>Z:</span> <span id="gyr-z">0</span>
-      </div>
-    </div>
-
-    <div class="sensor-section">
-      <h3>Orientation</h3>
-      <div class="sensor-reading">
-        <span>Alpha:</span> <span id="ori-alpha">0</span>
-      </div>
-      <div class="sensor-reading">
-        <span>Beta:</span> <span id="ori-beta">0</span>
-      </div>
-      <div class="sensor-reading">
-        <span>Gamma:</span> <span id="ori-gamma">0</span>
-      </div>
-    </div>
-
-    <div class="sensor-section">
-      <h3>Derived Magnetometer</h3>
-      <div class="sensor-reading">
-        <span>X:</span> <span id="mag-x">0</span>
-      </div>
-      <div class="sensor-reading">
-        <span>Y:</span> <span id="mag-y">0</span>
-      </div>
-      <div class="sensor-reading">
-        <span>Z:</span> <span id="mag-z">0</span>
-      </div>
-    </div>
-  </div>
 </body>
+
 </html>
