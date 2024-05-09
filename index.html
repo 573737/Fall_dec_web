@@ -2,12 +2,12 @@
 <html lang="en">
 
 <head>
-  <title>Device Motion with Normalized Prediction</title>
+  <title>Device Motion with Derived Magnetometer and Prediction</title>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script> <!-- Load TensorFlow.js -->
 </head>
 
 <body>
-  <h1>Sensor Data with Normalized Prediction</h1>
+  <h1>Sensor Data with Derived Magnetometer Prediction</h1>
 
   <div>
     <h2>Prediction Result</h2>
@@ -25,7 +25,7 @@
       }
     })();
 
-    // Velocity
+    // Initialize sensor data
     let velX = 0, velY = 0, velZ = 0;
     let lastTimestamp = null;
 
@@ -38,7 +38,9 @@
     let acceleration = { x: 0, y: 0, z: 0 };
     let gyroscope = { x: 0, y: 0, z: 0 };
     let orientation = { alpha: 0, beta: 0, gamma: 0 };
+    let derivedMagnetometer = { x: 0, y: 0, z: 0 }; // Placeholder for derived magnetometer
 
+    // Device Motion Event
     if (window.DeviceMotionEvent) {
       window.addEventListener('devicemotion', function (event) {
         const { acceleration: acc, rotationRate, timeStamp } = event;
@@ -63,6 +65,7 @@
       });
     }
 
+    // Device Orientation Event
     if (window.DeviceOrientationEvent) {
       window.addEventListener('deviceorientation', function (event) {
         orientation.alpha = event.alpha ?? 0;
@@ -71,16 +74,26 @@
       });
     }
 
+    // Derive magnetometer data based on orientation and other sensors
+    function deriveMagnetometer() {
+      // Example approximation: simple mapping of orientation to a "magnetic" value
+      // This is highly contextual and needs real-world calibration to be accurate
+      derivedMagnetometer.x = Math.sin((orientation.alpha || 0) * Math.PI / 180);
+      derivedMagnetometer.y = Math.cos((orientation.beta || 0) * Math.PI / 180);
+      derivedMagnetometer.z = Math.sin((orientation.gamma || 0) * Math.PI / 180);
+    }
+
     // Function to get normalized data and predict
     async function predictWithNormalizedData() {
+      // Normalize sensor data
       const expectedRanges = {
         velocity: { min: -10, max: 10 },
         orientation: { min: 0, max: 360 },
         acceleration: { min: -10, max: 10 },
-        gyroscope: { min: -250, max: 250 }
+        gyroscope: { min: -250, max: 250 },
+        magnetometer: { min: -1, max: 1 }, // Adjusted range for derived magnetometer
       };
 
-      // Normalize sensor data
       const normalizedVelocity = {
         x: normalize(velX, expectedRanges.velocity.min, expectedRanges.velocity.max),
         y: normalize(velY, expectedRanges.velocity.min, expectedRanges.velocity.max),
@@ -106,6 +119,14 @@
         z: normalize(gyroscope.z, expectedRanges.gyroscope.min, expectedRanges.gyroscope.max),
       };
 
+      deriveMagnetometer(); // Update derived magnetometer values
+
+      const normalizedMagnetometer = {
+        x: normalize(derivedMagnetometer.x, expectedRanges.magnetometer.min, expectedRanges.magnetometer.max),
+        y: normalize(derivedMagnetometer.y, expectedRanges.magnetometer.min, expectedRanges.magnetometer.max),
+        z: normalize(derivedMagnetometer.z, expectedRanges.magnetometer.min, expectedRanges.magnetometer.max),
+      };
+
       const predictionInput = [
         normalizedVelocity.x,
         normalizedVelocity.y,
@@ -120,13 +141,16 @@
         normalizedGyroscope.x,
         normalizedGyroscope.y,
         normalizedGyroscope.z,
+        normalizedMagnetometer.x,
+        normalizedMagnetometer.y,
+        normalizedMagnetometer.z,
         normalizedOrientation.y, // Roll
         normalizedOrientation.x, // Pitch
         normalizedOrientation.w // Yaw
       ];
 
       if (model) {
-        const inputTensor = tf.tensor2d([predictionInput], [1, 17], 'float32'); // Tensor with 17 values
+        const inputTensor = tf.tensor2d([predictionInput], [1, 19], 'float32'); // Tensor with 19 values
         const prediction = model.predict(inputTensor);
         const predictionValue = (await prediction.data())[0].toFixed(2);
 
