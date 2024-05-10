@@ -15,78 +15,65 @@
       font-family: Arial, sans-serif;
     }
 
-    #sensorDashboard {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
+    #sensorOutput {
+      text-align: center;
       border: 1px solid #ccc;
       padding: 20px;
       background-color: white;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     }
 
-    .sensor-widget {
-      border: 1px solid #ddd;
-      padding: 10px;
-      margin: 5px;
-      text-align: center;
-      background-color: #f9f9f9;
-      box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
+    #sensorTable {
+      width: 100%;
+      border-collapse: collapse;
     }
 
-    .sensor-label {
-      font-weight: bold;
+    #sensorTable th,
+    #sensorTable td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+
+    #sensorTable th {
+      background-color: #f2f2f2;
     }
   </style>
 </head>
 
 <body>
-  <div id="sensorDashboard">
-    <h2>Sensor Data with Predictions</h2>
-    <div id="timeWidget" class="sensor-widget">
-      <span class="sensor-label">Time:</span> <span id="timeValue">--</span>
-    </div>
-
-    <div class="sensor-widget">
-      <span class="sensor-label">Velocity:</span>
-      <div>x: <span id="velX">--</span></div>
-      <div>y: <span id="velY">--</span></div>
-      <div>z: <span id="velZ">--</span></div>
-    </div>
-
-    <div class="sensor-widget">
-      <span class="sensor-label">Orientation:</span>
-      <div>w: <span id="oriW">--</span></div>
-      <div>x: <span id="oriX">--</span></div>
-      <div>y: <span id="oriY">--</span></div>
-      <div>z: <span id="oriZ">--</span></div>
-    </div>
-
-    <div class="sensor-widget">
-      <span class="sensor-label">Acceleration:</span>
-      <div>x: <span id="accX">--</span></div>
-      <div>y: <span id="accY">--</span></div>
-      <div>z: <span id="accZ">--</span></div>
-    </div>
-
-    <div class="sensor-widget">
-      <span class="sensor-label">Gyroscope:</span>
-      <div>x: <span id="gyrX">--</span></div>
-      <div>y: <span id="gyrY">--</span></div>
-      <div>z: <span id="gyrZ">--</span></div>
-    </div>
-
-    <div class="sensor-widget">
-      <span class="sensor-label">Magnetometer:</span>
-      <div>x: <span id="magX">--</span></div>
-      <div>y: <span id="magY">--</span></div>
-      <div>z: <span id="magZ">--</span></div>
-    </div>
-
-    <div class="sensor-widget">
-      <span class="sensor-label">Prediction:</span>
-      <span id="predictionValue">N/A</span>
-    </div>
+  <div id="sensorOutput">
+    <h2>Sensor Data Table with Predictions</h2>
+    <table id="sensorTable">
+      <thead>
+        <tr>
+          <th>Time</th>
+          <th>VelInc_X</th>
+          <th>VelInc_Y</th>
+          <th>VelInc_Z</th>
+          <th>OriInc_w</th>
+          <th>OriInc_x</th>
+          <th>OriInc_y</th>
+          <th>OriInc_z</th>
+          <th>Acc_X</th>
+          <th>Acc_Y</th>
+          <th>Acc_Z</th>
+          <th>Gyr_X</th>
+          <th>Gyr_Y</th>
+          <th>Gyr_Z</th>
+          <th>Mag_X</th>
+          <th>Mag_Y</th>
+          <th>Mag_Z</th>
+          <th>Roll</th>
+          <th>Pitch</th>
+          <th>Yaw</th>
+          <th>Prediction</th> <!-- New prediction column -->
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Rows will be added here -->
+      </tbody>
+    </table>
   </div>
 
   <script>
@@ -99,6 +86,8 @@
         console.error("Error loading model:", error);
       }
     })();
+
+    const sensorTableBody = document.getElementById("sensorTable").querySelector("tbody");
 
     // Define sensor data and previous timestamp
     let velocity = { x: 0, y: 0, z: 0 };
@@ -114,8 +103,10 @@
       return (value - min) / (max - min);
     }
 
-    // Function to update sensor widgets
-    async function updateSensorWidgets() {
+    // Function to add a row with prediction
+    async function addSensorDataWithPrediction() {
+      const newRow = document.createElement("tr");
+
       const currentTime = new Date().toLocaleTimeString();
 
       // Define normalization ranges for each sensor
@@ -178,7 +169,7 @@
         normalizedMagnetometer.z,
         normalizedOrientation.y, // Roll
         normalizedOrientation.x, // Pitch
-        normalizedOrientation.w, // Yaw
+        normalizedOrientation.w // Yaw
       ];
 
       let predictionValue = "N/A"; // Default value if the model isn't loaded
@@ -190,39 +181,40 @@
         // Wait for prediction to complete and extract the value
         const predictedValue = (await prediction.data())[0]; // Raw prediction value
 
+        // Determine if the prediction indicates stable or unstable
         if (predictedValue < 18) {
-          predictionValue = predictedValue + "-Stable"; // Display 'Stable' if prediction is less than 18
+          predictionValue = predictedValue.toFixed(2) + "-Stable"; // Display 'Stable' if prediction is less than 18
         } else {
-          predictionValue = predictedValue + "-Unstable"; // Display 'Unstable' if prediction is 18 or more
+          predictionValue = predictedValue.toFixed(2) + "-Unstable"; // Display 'Unstable' if prediction is 18 or more
         }
       }
 
-      // Update the time widget
-      document.getElementById("timeValue").textContent = currentTime;
 
-      // Update sensor widgets
-      document.getElementById("velX").textContent = normalizedVelocity.x.toFixed(2);
-      document.getElementById("velY").textContent = normalizedVelocity.y.toFixed(2);
-      document.getElementById("velZ").textContent = normalizedVelocity.z.toFixed(2);
+      newRow.innerHTML = `
+    <td>${currentTime}</td>
+    <td>${normalizedVelocity.x.toFixed(2)}</td>
+    <td>${normalizedVelocity.y.toFixed(2)}</td>
+    <td>${normalizedVelocity.z.toFixed(2)}</td>
+    <td>${normalizedOrientation.w.toFixed(2)}</td>
+    <td>${normalizedOrientation.x.toFixed(2)}</td>
+    <td>${normalizedOrientation.y.toFixed(2)}</td>
+    <td>${normalizedOrientation.z.toFixed(2)}</td>
+    <td>${normalizedAcceleration.x.toFixed(2)}</td>
+    <td>${normalizedAcceleration.y.toFixed(2)}</td>
+    <td>${normalizedAcceleration.z.toFixed(2)}</td>
+    <td>${normalizedGyroscope.x.toFixed(2)}</td>
+    <td>${normalizedGyroscope.y.toFixed(2)}</td>
+    <td>${normalizedGyroscope.z.toFixed(2)}</td>
+    <td>${normalizedMagnetometer.x.toFixed(2)}</td>
+    <td>${normalizedMagnetometer.y.toFixed(2)}</td>
+    <td>${normalizedMagnetometer.z.toFixed(2)}</td>
+    <td>${normalizedOrientation.y.toFixed(2)}</td> 
+    <td>${normalizedOrientation.x.toFixed(2)}</td> 
+    <td>${normalizedOrientation.w.toFixed(2)}</td> 
+    <td>${predictionValue}</td>
+  `;
 
-      document.getElementById("oriW").textContent = normalizedOrientation.w.toFixed(2);
-      document.getElementById("oriX").textContent = normalizedOrientation.x.toFixed(2);
-      document.getElementById("oriY").textContent = normalizedOrientation.y.toFixed(2);
-      document.getElementById("oriZ").textContent = normalizedOrientation.z.toFixed(2);
-
-      document.getElementById("accX").textContent = normalizedAcceleration.x.toFixed(2);
-      document.getElementById("accY").textContent = normalizedAcceleration.y.toFixed(2);
-      document.getElementById("accZ").textContent = normalizedAcceleration.z.toFixed(2);
-
-      document.getElementById("gyrX").textContent = normalizedGyroscope.x.toFixed(2);
-      document.getElementById("gyrY").textContent = normalizedGyroscope.y.toFixed(2);
-      document.getElementById("gyrZ").textContent = normalizedGyroscope.z.toFixed(2);
-
-      document.getElementById("magX").textContent = normalizedMagnetometer.x.toFixed(2);
-      document.getElementById("magY").textContent = normalizedMagnetometer.y.toFixed(2);
-      document.getElementById("magZ").textContent = normalizedMagnetometer.z.toFixed(2);
-
-      document.getElementById("predictionValue").textContent = predictionValue;
+      sensorTableBody.appendChild(newRow);
     }
 
     // Listen for device motion events
@@ -262,11 +254,12 @@
       orientation.z = alpha ?? 0;
     });
 
-    // Update the sensor widgets with predictions every 3 seconds
+    // Update the sensor data table with predictions every 3 seconds
     setInterval(() => {
-      updateSensorWidgets();
+      addSensorDataWithPrediction();
     }, 3000); // 3-second interval
   </script>
+
 </body>
 
 </html>
