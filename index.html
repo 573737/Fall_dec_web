@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <title>Sensor Data with Dynamic Readings and TensorFlow Prediction</title>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script> <!-- Load TensorFlow.js -->
 </head>
+
 <body>
   <h1>Sensor Data with Dynamic Updates</h1>
 
@@ -104,11 +106,11 @@
 
         document.getElementById("acc-x").innerText = acceleration.x.toFixed(2);
         document.getElementById("acc-y").innerText = acceleration.y.toFixed(2);
-        document.getElementById("acc-z").innerText acceleration.z.toFixed(2);
+        document.getElementById("acc-z").innerText = acceleration.z.toFixed(2);
 
         document.getElementById("gyr-x").innerText = gyroscope.x.toFixed(2);
-        document.getElementById("gyr-y").innerText gyroscope.y.toFixed(2);
-        document.getElementById("gyr-z").innerText gyroscope.z.toFixed(2);
+        document.getElementById("gyr-y").innerText = gyroscope.y.toFixed(2);
+        document.getElementById("gyr-z").innerText = gyroscope.z.toFixed(2);
       });
     }
 
@@ -121,8 +123,8 @@
 
         // Update orientation data
         document.getElementById("ori-w").innerText = orientation.alpha.toFixed(2);
-        document.getElementById("ori-x").innerText orientation.beta.toFixed(2);
-        document.getElementById("ori-y").innerText orientation.gamma.toFixed(2);
+        document.getElementById("ori-x").innerText = orientation.beta.toFixed(2);
+        document.getElementById("ori-y").innerText = orientation.gamma.toFixed(2);
       });
     }
 
@@ -208,14 +210,22 @@
       if (model) {
         const inputTensor = tf.tensor2d([predictionInput], [1, 19], 'float32'); // Tensor with 19 inputs
         const prediction = model.predict(inputTensor);
-        const predictionValue = (await prediction.data())[0].toFixed(2);
 
-        document.getElementById('prediction-result').innerText = predictionValue;
+        // Determine if the prediction indicates stable or unstable
+        if (predictedValue < 18) {
+          predictionValue = "Stable"; // Display 'Stable' if prediction is less than 18
+        } else {
+          predictionValue = "Unstable"; // Display 'Unstable' if prediction is 18 or more
+        }
       }
+
+      document.getElementById('prediction-result').innerText = predictionValue;
     }
+    // }
 
     // Predict every few seconds
     setInterval(predictWithNormalizedData, 3000); // 3-second interval
   </script>
 </body>
+
 </html>
