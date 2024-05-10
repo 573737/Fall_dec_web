@@ -183,9 +183,9 @@
 
         // Determine if the prediction indicates stable or unstable
         if (predictedValue < 18) {
-          predictionValue = "Stable"; // Display 'Stable' if prediction is less than 18
+          predictionValue = prediction + "-Stable"; // Display 'Stable' if prediction is less than 18
         } else {
-          predictionValue = "Unstable"; // Display 'Unstable' if prediction is 18 or more
+          predictionValue = prediction + "-Unstable"; // Display 'Unstable' if prediction is 18 or more
         }
       }
 
